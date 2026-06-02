@@ -1,0 +1,11 @@
+#APP包名
+appPackage="com.auto.go"
+
+#APP名称
+appName="AutoGo"
+
+#APP打开后是否自动运行脚本
+autoRun=false
+
+#是否显示悬浮球,如果此项为false会强制autoRun为true
+showFloatingBall=true

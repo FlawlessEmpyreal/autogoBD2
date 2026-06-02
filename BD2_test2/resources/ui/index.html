@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f7f7f7;
+        }
+
+        .login-container {
+            width: 90%;
+            max-width: 300px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .lb {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+<div class="login-container">
+    <form id="myForm">
+        <p class="lb">登录</p>
+        <div>
+            <label for="username">用户名:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">密码:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div>
+            <input type="submit" value="登录">
+        </div>
+    </form>
+</div>
+
+<script>
+    // 页面加载时自动填充用户名和密码
+    document.addEventListener("DOMContentLoaded", function () {
+        const storedUsername = localStorage.getItem("username");
+        const storedPassword = localStorage.getItem("password");
+
+        if (storedUsername) {
+            document.getElementById("username").value = storedUsername;
+        }
+        if (storedPassword) {
+            document.getElementById("password").value = storedPassword;
+        }
+    });
+
+    // 获取表单元素
+    const form = document.getElementById('myForm');
+
+    // 添加提交事件监听
+    form.addEventListener("submit", function (event) {
+        event.preventDefault(); // 阻止表单默认提交
+
+        // 获取用户名和密码
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        // 构造请求 URL
+        const query = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+
+        // 发送请求
+        fetch(`/login?${query}`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.redirect) {
+                    // 登录成功后存储用户名和密码
+                    localStorage.setItem("username", username);
+                    localStorage.setItem("password", password);
+                    window.location.href = result.redirect; // 登录成功跳转到其他页面
+                } else if (result.message) {
+                    alert(result.message); // 显示错误信息
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('网络错误，请稍后再试');
+            });
+    });
+</script>
+</body>
+
+</html>
