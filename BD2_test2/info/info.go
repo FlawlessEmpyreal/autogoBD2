@@ -1,13 +1,61 @@
 package info
 
-import "image"
+import (
+	"image"
+	"path"
+)
 
-type StructColorCmp struct {
+var (
+	// 公共根目录
+	imgRoot = "/mnt/shared/Pictures/img"
+
+	yoloParamPath = path.Join(imgRoot, "misc/chapter1_best.param") //yolo param文件路径
+	yoloBinPath   = path.Join(imgRoot, "misc/chapter1_best.bin")   //yolo bin文件路径
+	yolo_labels   = "chapter1_monster"                             //yolo训练标签
+)
+
+type StructColorCmp struct { //找色点
 	X     int
 	Y     int
 	Color string
 }
 
+// 地图配置（颜色识别 + 传送点）
+type MapConfig struct { //每章节的地图设置
+	MapName         int           //该章节的第几张地图
+	TpPoint         image.Point   //传送点坐标
+	bigMapPath      string        //匹配坐标的地图路径
+	bin_mapPath     string        //二值化地图路径
+	MapFind         MapFind       //找地图用的找色信息
+	MonsterLocation []image.Point //怪物位置
+}
+
+type MapFind struct { //找地图用的找色点
+	Function     string           //说明性质的文本
+	MapColorsCmp []StructColorCmp //找色点
+}
+
+// 每个章节的信息汇总
+type ChapterConfig struct {
+	ChapterName     string      //章节名称
+	chapterImg_path string      //找章节时用的图片
+	MapConfig       []MapConfig //地图信息
+}
+
+type SceneConfig struct {
+	ColorsCmp []StructColorCmp
+}
+type InterfaceJudgment struct { // 界面识别配置
+	IF_Battle           SceneConfig    // 判断是否在战斗界面
+	IF_TpInterface      [2]SceneConfig // tp界面有两种
+	If_Map              SceneConfig    //判断是否在跑图界面
+	If_GenerateTP       SceneConfig    //判断是否生成传送
+	If_LoadingInterface SceneConfig    // 判断是否在加载界面
+	If_TpLeftButten     SceneConfig    // 地图中选择地图的左按钮找色
+	If_TpRightButten    SceneConfig    // 地图中选择地图的右按钮找色
+}
+
+// 判断是否在战斗界面
 var BattleInterface = []StructColorCmp{
 	{X: 1122, Y: 626, Color: "dedad6"},
 	{X: 194, Y: 618, Color: "ffffff"},
@@ -16,6 +64,7 @@ var BattleInterface = []StructColorCmp{
 	{X: 854, Y: 42, Color: "fefefd"},
 }
 
+// tp界面有两种
 var TpInterface1 = []StructColorCmp{
 	{X: 169, Y: 41, Color: "dedad2"},
 	{X: 182, Y: 53, Color: "dedad2"},
@@ -27,6 +76,7 @@ var TpInterface2 = []StructColorCmp{
 	{X: 187, Y: 42, Color: "dedad2"},
 }
 
+// 第一章地图1界面找色
 var Chapter1_1ColorCmp = []StructColorCmp{
 	{X: 562, Y: 231, Color: "a19f94"},
 	{X: 752, Y: 348, Color: "a09e93"},
@@ -34,14 +84,18 @@ var Chapter1_1ColorCmp = []StructColorCmp{
 	{X: 709, Y: 390, Color: "9f9d92"},
 }
 
+// 第一章地图1界面传送点
 var Chapter1_1TpPoint = image.Point{525, 372}
 
+// 第一章地图2界面找色
 var Chapter1_2ColorCmp = []StructColorCmp{
 	{X: 508, Y: 231, Color: "9e9b93"},
 	{X: 648, Y: 317, Color: "9b9a8e"},
 	{X: 503, Y: 420, Color: "9c9a90"},
 	{X: 716, Y: 296, Color: "9a9990"},
 }
+
+// 第一章地图2界面传送点
 var Chapter1_2TpPoint = image.Point{543, 294}
 
 var ChapterSelectDetect = []StructColorCmp{
@@ -57,13 +111,14 @@ var If_Map = []StructColorCmp{ //判断是否在跑图界面
 	{X: 317, Y: 83, Color: "ffffff"},
 }
 
-var If_GenerateTP = []StructColorCmp{ //判断是否在跑图界面
+var If_GenerateTP = []StructColorCmp{ //判断是否生成传送
 	{X: 477, Y: 442, Color: "dedad6"},
 	{X: 614, Y: 446, Color: "dedad6"},
 	{X: 660, Y: 443, Color: "dedad6"},
 	{X: 802, Y: 443, Color: "dedad6"},
 }
 
+// 判断是否在加载界面
 var LoadingInterface = []StructColorCmp{
 	{X: 191, Y: 149, Color: "000000"},
 	{X: 190, Y: 343, Color: "000000"},
@@ -72,12 +127,14 @@ var LoadingInterface = []StructColorCmp{
 	{X: 63, Y: 42, Color: "000000"},
 }
 
+// 地图中选择地图的左按钮找色
 var TpLeftButten = []StructColorCmp{
 	{X: 300, Y: 344, Color: "dedad6"},
 	{X: 305, Y: 338, Color: "dedace"},
 	{X: 304, Y: 349, Color: "dddbd5"},
 }
 
+// 地图中选择地图的右按钮找色
 var TpRightButten = []StructColorCmp{
 	{X: 979, Y: 344, Color: "dedad6"},
 	{X: 974, Y: 338, Color: "dedace"},
