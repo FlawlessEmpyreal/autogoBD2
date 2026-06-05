@@ -5,6 +5,7 @@ import (
 	"app/aStar"
 	"app/info"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"math"
@@ -21,15 +22,15 @@ import (
 func Chapter_Tp(
 	chapterMap_Point []info.StructColorCmp, //找地图时用的找色
 	Chapter_TpPoint image.Point, //传送点坐标
-) {
-	for i := 0; i < 20; i++ {
+) (RecoveryAction, error) {
+	for i := 0; i < 60; i++ {
 		if MyOpenCV.If_LoadingInterface(0.8) {
 			time.Sleep(1000 * time.Millisecond)
 		} else {
 			break
 		}
-		if i == 19 {
-			println("卡加载,退出")
+		if i == 60 {
+			println("卡加载60秒,直接退出")
 			os.Exit(0)
 		}
 	}
@@ -60,8 +61,7 @@ func Chapter_Tp(
 		motion.Click(x, y, 0, 0)
 
 		if i == 9 {
-			print("未进入传送地图")
-			os.Exit(0)
+			return GoBattleInterface, fmt.Errorf("未进入传送地图,回跑图界面,重试")
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -109,8 +109,7 @@ func Chapter_Tp(
 			break
 		}
 		if i == 3 {
-			println("未找到传送地图,暂时未做异常处理")
-			os.Exit(0)
+			return RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
 		}
 	}
 
@@ -121,7 +120,7 @@ func Chapter_Tp(
 		}
 
 		time.Sleep(1 * time.Second)
-		for i := 0; i < 8; i++ {
+		for i := 0; i < 60; i++ {
 			if MyOpenCV.ColorCmp(info.IF.If_GenerateTP.ColorsCmp, 0.7) {
 				motion.Click(734, 442, 0, 0) //点击确定
 			}
@@ -129,8 +128,8 @@ func Chapter_Tp(
 				break //确定没卡顿
 			}
 			time.Sleep(1000 * time.Millisecond)
-			if i == 7 {
-				println("确定生成传送阵时卡顿了")
+			if i == 60 {
+				println("确定生成传送阵时卡了60秒,直接退出")
 				os.Exit(0)
 			}
 		}
@@ -141,18 +140,19 @@ func Chapter_Tp(
 			motion.Click(105, 40, 0, 0)
 		}
 		if i == 3 {
-			println("未退出传送地图")
+			return RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
 		}
 	}
 	time.Sleep(5 * time.Second) //成功传送后等五秒要不容易直接跳步骤
 	println("进入地图")
+	return StageDone, nil
 }
 
-func FindChapter(chapterImg_path string) { //必须在章节界面
+func FindChapter(chapterImg_path, type_ string) (RecoveryAction, error) { //必须在章节界面
 	img := MyOpenCV.If_chapterSelectInterface()
 	chapterImg := MyOpenCV.GetByte(chapterImg_path)
 	if chapterImg == nil {
-		println("章节选择图片读取错误,退出")
+		println("章节图片读取错误,请检查路径权限或文件是否存在")
 		os.Exit(0)
 	}
 
@@ -167,7 +167,18 @@ func FindChapter(chapterImg_path string) { //必须在章节界面
 			time.Sleep(1 * time.Second)
 		}
 		if i == 2 {
-			println("没进入章节选择界面,暂未做异常处理,退出")
+			return GoBattleInterface, errors.New("没进入章节选择界面,退到跑图界面重试")
+		}
+	}
+
+	for i := 0; i < 3; i++ { //选择主线和支线
+		if type_ == "main" {
+			motion.Click(info.MiscPoint.MainChapterChoose.X, info.MiscPoint.MainChapterChoose.Y, 0, 0)
+			time.Sleep(300 * time.Millisecond)
+		} else if type_ == "branch" {
+			motion.Click(info.MiscPoint.BranchChapterChoose.X, info.MiscPoint.BranchChapterChoose.Y, 0, 0)
+		} else {
+			println("type_的值只能是main或者branch")
 			os.Exit(0)
 		}
 	}
@@ -179,7 +190,7 @@ func FindChapter(chapterImg_path string) { //必须在章节界面
 			x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0)
 			if x == -1 && y == -1 {
 				time.Sleep(3 * time.Second)
-				return
+				return GoBattleInterface, errors.New("未找到目标章节,可能是主线或支线章节未切换或网络延迟,退到跑图界面重试")
 			}
 		}
 	}
@@ -206,22 +217,22 @@ func FindChapter(chapterImg_path string) { //必须在章节界面
 		}
 	}
 
-	for i := 0; i < 20; i++ { //持续检测是否进入加载界面
-		if MyOpenCV.If_LoadingInterface(0.8) {
-			break
-		}
-		if i == 19 {
-			println("未进入加载界面")
-			os.Exit(0)
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	for i := 0; i < 20; i++ {
+	//for i := 0; i < 20; i++ { //持续检测是否进入加载界面
+	//	if MyOpenCV.If_LoadingInterface(0.8) {
+	//		break
+	//	}
+	//	if i == 19 {
+	//		return GoBattleInterface, errors.New("未找到目标章节,可能是主线或支线章节未切换或网络延迟,退到跑图界面重试")
+	//		os.Exit(0)
+	//	}
+	//	time.Sleep(500 * time.Millisecond)
+	//}
+	for i := 0; i < 60; i++ { //持续检测是否在加载界面
 		if !MyOpenCV.If_LoadingInterface(0.8) {
 			break
 		}
 		if i == 19 {
-			println("卡在加载界面")
+			println("卡在加载界面一分钟,退出进程")
 			os.Exit(0)
 		}
 		time.Sleep(1 * time.Second)
@@ -242,35 +253,32 @@ func FindChapter(chapterImg_path string) { //必须在章节界面
 	//	println("已进入章节")
 	//	break
 	//}
-
+	return StageDone, nil
 }
 
 func ChapterRun(
-	RunName, //标识，仅说明
 	bigMapPath, //大地图路径
 	bin_mapPath string, //二值化地图路径
 	MonsterLocation []image.Point, //怪物位置
-) {
+) (RecoveryAction, error) {
 
-	println("即将运行地图:", RunName)
 	//obstacle, _ := aStar.LoadObstacleMap(bin_mapPath)
-	var inBattle bool
+	var ifRunMap bool
 	for i := 0; i < 20; i++ {
-		inBattle = MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.85)
-		if inBattle {
+		ifRunMap = MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.85)
+		if ifRunMap {
 			break
 		}
 		if i == 19 {
-			println("未进入跑图界面,未做异常处理")
-			os.Exit(0)
+			return GoBattleInterface, fmt.Errorf("未进入跑图界面,返回到跑图界面")
 		}
 		time.Sleep(1 * time.Second)
 	}
 
 	yolo := yolo.New("v5", 4, info.YoloParamPath, info.YoloBinPath, info.Yolo_labels)
 	if yolo == nil {
-		fmt.Println("模型加载失败")
-		return
+		fmt.Println("模型加载失败,直接退出")
+		os.Exit(0)
 	}
 	defer yolo.Close()
 	fmt.Println("模型加载成功")
@@ -292,7 +300,7 @@ func ChapterRun(
 		for {
 			select {
 			case <-ctx.Done(): // 监听到上下文被取消，主动退出
-				fmt.Println("收到Context信号，技能协程退出")
+				fmt.Println("收到Context信号，释放技能的协程退出")
 				return
 			default:
 				if info.Accelerate {
@@ -378,4 +386,6 @@ func ChapterRun(
 	aStar.YoloFind(yolo, bigMapPath)
 	cancel()
 	time.Sleep(2 * time.Second)
+
+	return StageDone, nil
 }

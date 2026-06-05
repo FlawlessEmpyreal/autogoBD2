@@ -1,38 +1,99 @@
 package mainProcess
 
+//注册第一章节
+
 import (
 	"app/info"
 )
 
-func Chapter1() {
-
-	FindChapter(info.Ch1.ChapterImg_path)
-
-	Chapter_Tp(
-		info.Ch1.MapConfig[0].MapFind.MapColorsCmp,
-		info.Ch1.MapConfig[0].TpPoint,
-	)
-
-	ChapterRun(
-		"chapter1_1",
-		info.Ch1.MapConfig[0].BigMapPath,
-		info.Ch1.MapConfig[0].Bin_mapPath,
-		info.Ch1.MapConfig[0].MonsterLocation,
-	)
-
-	Chapter_Tp(
-		info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
-		info.Ch1.MapConfig[1].TpPoint,
-	)
-
-	ChapterRun(
-		"chapter1_2",
-		info.Ch1.MapConfig[1].BigMapPath,
-		info.Ch1.MapConfig[1].Bin_mapPath,
-		info.Ch1.MapConfig[1].MonsterLocation,
-	)
-
+func RegisterChapters(CtrlMainStoryline *Controller) {
+	// -------- Chapter 1 --------
+	CtrlMainStoryline.Register(&ChapterConfig{
+		Name:       "chapter1",
+		Enabled:    true,
+		MaxRetries: 3,
+		Stages: []Stage{
+			{
+				Name: "FindChapter",
+				Run: func() (RecoveryAction, error) {
+					return FindChapter(
+						info.Ch1.ChapterImg_path,
+						info.Ch1.Type_,
+					)
+				},
+			},
+			{
+				Name: "Tp_1",
+				Run: func() (RecoveryAction, error) {
+					return Chapter_Tp(
+						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
+						info.Ch1.MapConfig[1].TpPoint,
+					)
+				},
+			},
+			{
+				Name: "RunChapter1_1",
+				Run: func() (RecoveryAction, error) {
+					return ChapterRun(
+						info.Ch1.MapConfig[0].BigMapPath,
+						info.Ch1.MapConfig[0].Bin_mapPath,
+						info.Ch1.MapConfig[0].MonsterLocation,
+					)
+				},
+			},
+			{
+				Name: "Tp_2",
+				Run: func() (RecoveryAction, error) {
+					return Chapter_Tp(
+						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
+						info.Ch1.MapConfig[1].TpPoint,
+					)
+				},
+			},
+			{
+				Name: "RunChapter1_2",
+				Run: func() (RecoveryAction, error) {
+					return ChapterRun(
+						info.Ch1.MapConfig[1].BigMapPath,
+						info.Ch1.MapConfig[1].Bin_mapPath,
+						info.Ch1.MapConfig[1].MonsterLocation,
+					)
+				},
+			},
+		},
+	})
+	// -------- Chapter 1 --------
 }
+
+//func Chapter1() {
+//
+//	FindChapter(info.Ch1.ChapterImg_path)
+//
+//	Chapter_Tp(
+//		info.Ch1.MapConfig[0].MapFind.MapColorsCmp,
+//		info.Ch1.MapConfig[0].TpPoint,
+//	)
+//
+//	ChapterRun(
+//		"chapter1_1",
+//		info.Ch1.MapConfig[0].BigMapPath,
+//		info.Ch1.MapConfig[0].Bin_mapPath,
+//		info.Ch1.MapConfig[0].MonsterLocation,
+//	)
+//
+//	Chapter_Tp(
+//		info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
+//		info.Ch1.MapConfig[1].TpPoint,
+//	)
+//
+//	ChapterRun(
+//		"chapter1_2",
+//		info.Ch1.MapConfig[1].BigMapPath,
+//		info.Ch1.MapConfig[1].Bin_mapPath,
+//		info.Ch1.MapConfig[1].MonsterLocation,
+//	)
+//
+//}
 
 //func chapterRun(
 //	RunName , 			//标识，仅说明

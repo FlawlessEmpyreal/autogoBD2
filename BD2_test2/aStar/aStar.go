@@ -2,6 +2,7 @@ package aStar
 
 import (
 	"app/MyOpenCV"
+	"app/info"
 	"app/myMotion"
 	"container/heap"
 	"context"
@@ -529,7 +530,7 @@ func FindPath(m *AStarMap, start, end Point) []Point {
 	//}
 
 	// 确保相邻点间距不超过20像素
-	interpolated := interpolatePath(centered, 20.0)
+	interpolated := interpolatePath(centered, info.MaxDist)
 	// 验证插值结果
 	for i := 1; i < len(interpolated); i++ {
 		dx := interpolated[i].X - interpolated[i-1].X
@@ -620,7 +621,7 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) W
 	for _, waypoint := range path {
 		tryCount := 0
 
-		for tryCount < 15 {
+		for tryCount < info.PathfindingRetryCount {
 			// 检查是否被取消
 			select {
 			case <-ctx.Done():
@@ -637,11 +638,11 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) W
 			fmt.Printf("tryCount=%d cur=(%d,%d) waypoint=(%d,%d) dist=%.1f\n",
 				tryCount, cur.X, cur.Y, waypoint.X, waypoint.Y, dist)
 
-			if dist < 15 {
+			if dist < info.SuccessDist {
 				break
 			}
 
-			if dist > 40 {
+			if dist > info.ErrDist {
 				return STATE_CDT_Useless
 			}
 
@@ -650,14 +651,14 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) W
 			myMotion.StartMoveXY(holdX, holdY)
 
 			tryCount++
-			time.Sleep(16 * time.Millisecond)
+			time.Sleep(info.NavigationInterval)
 		}
 
-		if tryCount >= 15 {
+		if tryCount >= info.PathfindingRetryCount {
 			detachmentTime++
 		}
 
-		if detachmentTime >= 2 {
+		if detachmentTime >= info.TimeoutCount {
 			return STATE_Movement_timeout
 		}
 	}

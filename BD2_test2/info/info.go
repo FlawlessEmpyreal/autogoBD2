@@ -3,39 +3,54 @@ package info
 import (
 	"image"
 	"path"
+	"time"
 )
 
 // 使用技能
 
-
-
 var (
-	// 公共根目录
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+	// ====================Dir======================
 	imgRoot = "/mnt/shared/Pictures/img"
 
 	YoloParamPath = path.Join(imgRoot, "misc/chapter1_best.param") //yolo param文件路径
 	YoloBinPath   = path.Join(imgRoot, "misc/chapter1_best.bin")   //yolo bin文件路径
 
-	//============================
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+	//=====================labels===============
 
-	Yolo_labels   = "chapter1_monster"
-	Accelerate bool = true
-	Stealth bool = false
-	Subdue bool = true//yolo训练标签
+	Yolo_labels = "chapter1_monster"
+
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+	//===================skill para=============
+
+	Accelerate bool = true  //加速
+	Stealth    bool = false //隐身
+	Subdue     bool = true  //压制
+
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+	//================astar para==============
+	MaxDist     = 20.0 //路径简化后,路径之间的最大像素距离
+	SuccessDist = 15.0 //目标在这个范围内看作寻路完成
+	ErrDist     = 40.0 //离下一个目标超过这个距离算作寻路超距, 注意: MaxDist + SuccessDist < ErrDist
+
+	PathfindingRetryCount = 15                    //寻路重试次数,超过这个次数 超时计数+1
+	TimeoutCount          = 2                     //超时计数大于这个数返回超时
+	NavigationInterval    = 16 * time.Millisecond //寻路间隔,默认一秒六十次
 )
 
 //=================================================================================
 
 type ButtenPoint struct {
 	Accelerate image.Point
-	Stealth image.Point
-	Subdue image.Point
+	Stealth    image.Point
+	Subdue     image.Point
 }
 
 var BP = ButtenPoint{
-	Accelerate : image.Point{1000, 650},
-	Stealth : image.Point{967, 561},
-	Subdue : image.Point{1000, 480},
+	Accelerate: image.Point{1000, 650},
+	Stealth:    image.Point{967, 561},
+	Subdue:     image.Point{1000, 480},
 }
 
 type StructColorCmp struct { //找色点
@@ -64,6 +79,7 @@ type ChapterConfig struct {
 	ChapterName     string      //章节名称
 	ChapterImg_path string      //找章节时用的图片
 	MapConfig       []MapConfig //地图信息
+	Type_           string      //主线还是支线
 }
 
 type SceneConfig struct {
