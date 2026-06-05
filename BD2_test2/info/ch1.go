@@ -8,15 +8,15 @@ import (
 )
 
 // 第一章信息
-var ch1 = ChapterConfig{
+var Ch1 = ChapterConfig{
 	ChapterName:     "chapter1",
-	chapterImg_path: path.Join(imgRoot, "misc/chapter1Selcet.png"),
+	ChapterImg_path: path.Join(imgRoot, "misc/chapter1Selcet.png"),
 	MapConfig: []MapConfig{
 		{
 			MapName:     1,
 			TpPoint:     image.Point{525, 372},
-			bigMapPath:  path.Join(imgRoot, "map/scaled_grey_Extend_chapter1_1.jpg"),
-			bin_mapPath: path.Join(imgRoot, "map/bin_map_chapter1_1.jpg"),
+			BigMapPath:  path.Join(imgRoot, "map/scaled_grey_Extend_chapter1_1.jpg"),
+			Bin_mapPath: path.Join(imgRoot, "map/bin_map_chapter1_1.jpg"),
 			MapFind: MapFind{
 				Function: "第一章地图1界面找色",
 				MapColorsCmp: []StructColorCmp{
@@ -37,8 +37,8 @@ var ch1 = ChapterConfig{
 		{
 			MapName:     2,
 			TpPoint:     image.Point{543, 294},
-			bigMapPath:  path.Join(imgRoot, "map/scaled_grey_Extend_chapter1_2.jpg"),
-			bin_mapPath: path.Join(imgRoot, "map/bin_map_chapter1_2.jpg"),
+			BigMapPath:  path.Join(imgRoot, "map/scaled_grey_Extend_chapter1_2.jpg"),
+			Bin_mapPath: path.Join(imgRoot, "map/bin_map_chapter1_2.jpg"),
 			MapFind: MapFind{
 				Function: "第一章地图2界面找色",
 				MapColorsCmp: []StructColorCmp{

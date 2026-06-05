@@ -174,8 +174,8 @@ func ReSizeImg(path string, scaledProportion float64) {
 }
 
 func If_BattleInterface(sim float32) bool {
-	for i := 0; i < len(info.BattleInterface); i++ {
-		matched := images.CmpColor(info.BattleInterface[i].X, info.BattleInterface[i].Y, info.BattleInterface[i].Color, sim, 0)
+	for i := 0; i < len(info.IF.IF_Battle.ColorsCmp); i++ {
+		matched := images.CmpColor(info.IF.IF_Battle.ColorsCmp[i].X, info.IF.IF_Battle.ColorsCmp[i].Y, info.IF.IF_Battle.ColorsCmp[i].Color, sim, 0)
 		if matched == false {
 			return false
 		}
@@ -184,8 +184,8 @@ func If_BattleInterface(sim float32) bool {
 }
 
 func If_LoadingInterface(sim float32) bool {
-	for i := 0; i < len(info.LoadingInterface); i++ {
-		matched := images.CmpColor(info.LoadingInterface[i].X, info.LoadingInterface[i].Y, info.LoadingInterface[i].Color, sim, 0)
+	for i := 0; i < len(info.IF.If_LoadingInterface.ColorsCmp); i++ {
+		matched := images.CmpColor(info.IF.If_LoadingInterface.ColorsCmp[i].X, info.IF.If_LoadingInterface.ColorsCmp[i].Y, info.IF.If_LoadingInterface.ColorsCmp[i].Color, sim, 0)
 		if matched == false {
 			return false
 		}
@@ -200,8 +200,8 @@ func If_chapterSelectInterface() *[]byte {
 func If_TpInterface(sim float32) bool {
 	count1 := 0
 	matched1, matched2 := false, false
-	for i := 0; i < len(info.TpInterface1); i++ {
-		if images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0) {
+	for i := 0; i < len(info.IF.IF_TpInterface[0].ColorsCmp); i++ {
+		if images.CmpColor(info.IF.IF_TpInterface[0].ColorsCmp[i].X, info.IF.IF_TpInterface[0].ColorsCmp[i].Y, info.IF.IF_TpInterface[0].ColorsCmp[i].Color, sim, 0) {
 			count1++
 		}
 		//matched1 = images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0)
@@ -211,8 +211,8 @@ func If_TpInterface(sim float32) bool {
 		}
 	}
 	count2 := 0
-	for i := 0; i < len(info.TpInterface2); i++ {
-		if images.CmpColor(info.TpInterface2[i].X, info.TpInterface2[i].Y, info.TpInterface2[i].Color, sim, 0) {
+	for i := 0; i < len(info.IF.IF_TpInterface[1].ColorsCmp); i++ {
+		if images.CmpColor(info.IF.IF_TpInterface[1].ColorsCmp[i].X, info.IF.IF_TpInterface[1].ColorsCmp[i].Y, info.IF.IF_TpInterface[1].ColorsCmp[i].Color, sim, 0) {
 			count2++
 		}
 		//matched1 = images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0)
