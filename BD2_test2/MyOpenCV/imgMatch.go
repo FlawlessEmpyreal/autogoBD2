@@ -197,42 +197,42 @@ func If_chapterSelectInterface() *[]byte {
 	return GetByte(chapterSelectInterfaceImg_path)
 }
 
-func If_TpInterface(sim float32) bool {
-	count1 := 0
-	matched1, matched2 := false, false
-	for i := 0; i < len(info.IF.IF_TpInterface[0].ColorsCmp); i++ {
-		if images.CmpColor(info.IF.IF_TpInterface[0].ColorsCmp[i].X, info.IF.IF_TpInterface[0].ColorsCmp[i].Y, info.IF.IF_TpInterface[0].ColorsCmp[i].Color, sim, 0) {
-			count1++
-		}
-		//matched1 = images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0)
-		if count1 >= 2 {
-			matched1 = true
-			break
-		}
-	}
-	count2 := 0
-	for i := 0; i < len(info.IF.IF_TpInterface[1].ColorsCmp); i++ {
-		if images.CmpColor(info.IF.IF_TpInterface[1].ColorsCmp[i].X, info.IF.IF_TpInterface[1].ColorsCmp[i].Y, info.IF.IF_TpInterface[1].ColorsCmp[i].Color, sim, 0) {
-			count2++
-		}
-		//matched1 = images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0)
-		if count2 >= 2 {
-			matched2 = true
-			break
-		}
-	}
-	//for i := 0; i < len(info.TpInterface2); i++ {
-	//	matched2 = images.CmpColor(info.TpInterface2[i].X, info.TpInterface2[i].Y, info.TpInterface2[i].Color, sim, 0)
-	//	if matched2 == false {
-	//		break
-	//	}
-	//}
-	if matched1 || matched2 {
-		return true
-	} else {
-		return false
-	}
-}
+//func If_TpInterface(sim float32) bool {
+//	count1 := 0
+//	matched1, matched2 := false, false
+//	for i := 0; i < len(info.IF.IF_TpInterface[0].ColorsCmp); i++ {
+//		if images.CmpColor(info.IF.IF_TpInterface[0].ColorsCmp[i].X, info.IF.IF_TpInterface[0].ColorsCmp[i].Y, info.IF.IF_TpInterface[0].ColorsCmp[i].Color, sim, 0) {
+//			count1++
+//		}
+//		//matched1 = images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0)
+//		if count1 >= 2 {
+//			matched1 = true
+//			break
+//		}
+//	}
+//	count2 := 0
+//	for i := 0; i < len(info.IF.IF_TpInterface[1].ColorsCmp); i++ {
+//		if images.CmpColor(info.IF.IF_TpInterface[1].ColorsCmp[i].X, info.IF.IF_TpInterface[1].ColorsCmp[i].Y, info.IF.IF_TpInterface[1].ColorsCmp[i].Color, sim, 0) {
+//			count2++
+//		}
+//		//matched1 = images.CmpColor(info.TpInterface1[i].X, info.TpInterface1[i].Y, info.TpInterface1[i].Color, sim, 0)
+//		if count2 >= 2 {
+//			matched2 = true
+//			break
+//		}
+//	}
+//	//for i := 0; i < len(info.TpInterface2); i++ {
+//	//	matched2 = images.CmpColor(info.TpInterface2[i].X, info.TpInterface2[i].Y, info.TpInterface2[i].Color, sim, 0)
+//	//	if matched2 == false {
+//	//		break
+//	//	}
+//	//}
+//	if matched1 || matched2 {
+//		return true
+//	} else {
+//		return false
+//	}
+//}
 
 func ColorCmp(ColorCmp []info.StructColorCmp, sim float32) bool { //传送地图多点找色
 	if len(ColorCmp) < 3 {
@@ -251,4 +251,27 @@ func ColorCmp(ColorCmp []info.StructColorCmp, sim float32) bool { //传送地图
 	} else {
 		return false
 	}
+}
+
+func ListColorsCmp(scene []info.SceneConfig, sim float32) bool {
+	if len(scene) <= 0 {
+		println("找色列表大小不能小于等于0")
+		os.Exit(0)
+	}
+	for i := 0; i < len(scene); i++ {
+		count := 0
+		if len(scene[i].ColorsCmp) < 3 {
+			println("找色点数量不能小于3")
+			os.Exit(0)
+		}
+		for j := 0; j < len(scene[i].ColorsCmp); j++ {
+			if images.CmpColor(scene[i].ColorsCmp[j].X, scene[i].ColorsCmp[j].Y, scene[i].ColorsCmp[j].Color, sim, 0) {
+				count++
+				if count >= len(scene[i].ColorsCmp)-1 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

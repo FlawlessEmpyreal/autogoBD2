@@ -3,6 +3,8 @@ package myMotion
 
 import (
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/Dasongzi1366/AutoGo/motion"
 )
@@ -43,4 +45,18 @@ func StopMove() {
 		motion.TouchUp(ScreenCenterX, ScreenCenterY, 0, 0)
 		isHolding = false
 	}
+}
+
+func RandomPoint() (x1, y1, x2, y2 int) { //角色周围随机生成坐标
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	theta := r.Float64() * 2 * math.Pi
+
+	// 计算第一次点击的坐标
+	x1 = 640 + int(float64(150)*math.Cos(theta))
+	y1 = 360 + int(float64(150)*math.Sin(theta))
+
+	// 计算相反方向的坐标 (角度 + Pi)
+	x2 = 640 + int(float64(150)*math.Cos(theta+math.Pi))
+	y2 = 360 + int(float64(150)*math.Sin(theta+math.Pi))
+	return x1, y1, x2, y2
 }

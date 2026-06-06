@@ -22,7 +22,7 @@ import (
 func Chapter_Tp(
 	chapterMap_Point []info.StructColorCmp, //找地图时用的找色
 	Chapter_TpPoint image.Point, //传送点坐标
-) (RecoveryAction, error) {
+) (info.RecoveryAction, error) {
 	for i := 0; i < 60; i++ {
 		if MyOpenCV.If_LoadingInterface(0.8) {
 			time.Sleep(1000 * time.Millisecond)
@@ -37,17 +37,17 @@ func Chapter_Tp(
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 10; i++ {
-		if MyOpenCV.If_TpInterface(0.7) { //查看是否进入传送地图
+		if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.7) { //查看是否进入传送地图
 			break
 		}
 		motion.Click(1089, 444, 0, 0) //点击传送阵
 		time.Sleep(2 * time.Second)
-		if MyOpenCV.If_TpInterface(0.7) { //查看是否进入传送地图
+		if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.7) { //查看是否进入传送地图
 			break
 		}
 		motion.Click(870, 567, 0, 0) //如果在传送阵周围
 		time.Sleep(2 * time.Second)
-		if MyOpenCV.If_TpInterface(0.7) { //查看是否进入传送地图
+		if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.7) { //查看是否进入传送地图
 			break
 		}
 
@@ -61,7 +61,7 @@ func Chapter_Tp(
 		motion.Click(x, y, 0, 0)
 
 		if i == 9 {
-			return GoBattleInterface, fmt.Errorf("未进入传送地图,回跑图界面,重试")
+			return info.GoToRunMapInterface, fmt.Errorf("未进入传送地图,回跑图界面,重试")
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -80,7 +80,7 @@ func Chapter_Tp(
 	for i := 0; i < 3; i++ { //来回找三次
 		state_ := false
 		for i := 0; i < 8; i++ { //将地图往左点
-			if !MyOpenCV.ColorCmp(info.IF.If_TpLeftButten.ColorsCmp, 0.8) { //没按钮也不用点了
+			if !MyOpenCV.ColorCmp(info.IF.If_TpLeftButton.ColorsCmp, 0.8) { //没按钮也不用点了
 				break
 			}
 			if MyOpenCV.ColorCmp(chapterMap_Point, 0.7) {
@@ -95,7 +95,7 @@ func Chapter_Tp(
 		}
 
 		for i := 0; i < 8; i++ { //将地图往右点
-			if !MyOpenCV.ColorCmp(info.IF.If_TpRightButten.ColorsCmp, 0.8) { //没按钮也不用点了
+			if !MyOpenCV.ColorCmp(info.IF.If_TpRightButton.ColorsCmp, 0.8) { //没按钮也不用点了
 				break
 			}
 			if MyOpenCV.ColorCmp(chapterMap_Point, 0.7) {
@@ -109,7 +109,7 @@ func Chapter_Tp(
 			break
 		}
 		if i == 3 {
-			return RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
+			return info.RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
 		}
 	}
 
@@ -134,21 +134,21 @@ func Chapter_Tp(
 			}
 		}
 
-		if !MyOpenCV.If_TpInterface(0.80) { //查看是否退出传送界面
+		if !MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.7) { //查看是否退出传送界面
 			break
 		} else {
 			motion.Click(105, 40, 0, 0)
 		}
 		if i == 3 {
-			return RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
+			return info.RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
 		}
 	}
 	time.Sleep(5 * time.Second) //成功传送后等五秒要不容易直接跳步骤
 	println("进入地图")
-	return StageDone, nil
+	return info.StageDone, nil
 }
 
-func FindChapter(chapterImg_path, type_ string) (RecoveryAction, error) { //必须在章节界面
+func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { //必须在章节界面
 	img := MyOpenCV.If_chapterSelectInterface()
 	chapterImg := MyOpenCV.GetByte(chapterImg_path)
 	if chapterImg == nil {
@@ -167,7 +167,7 @@ func FindChapter(chapterImg_path, type_ string) (RecoveryAction, error) { //必�
 			time.Sleep(1 * time.Second)
 		}
 		if i == 2 {
-			return GoBattleInterface, errors.New("没进入章节选择界面,退到跑图界面重试")
+			return info.GoToRunMapInterface, errors.New("没进入章节选择界面,退到跑图界面重试")
 		}
 	}
 
@@ -190,7 +190,7 @@ func FindChapter(chapterImg_path, type_ string) (RecoveryAction, error) { //必�
 			x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0)
 			if x == -1 && y == -1 {
 				time.Sleep(3 * time.Second)
-				return GoBattleInterface, errors.New("未找到目标章节,可能是主线或支线章节未切换或网络延迟,退到跑图界面重试")
+				return info.GoToRunMapInterface, errors.New("未找到目标章节,可能是主线或支线章节未切换或网络延迟,退到跑图界面重试")
 			}
 		}
 	}
@@ -253,16 +253,20 @@ func FindChapter(chapterImg_path, type_ string) (RecoveryAction, error) { //必�
 	//	println("已进入章节")
 	//	break
 	//}
-	return StageDone, nil
+	return info.StageDone, nil
 }
 
 func ChapterRun(
 	bigMapPath, //大地图路径
 	bin_mapPath string, //二值化地图路径
 	MonsterLocation []image.Point, //怪物位置
-) (RecoveryAction, error) {
+) (info.RecoveryAction, error) {
 
-	//obstacle, _ := aStar.LoadObstacleMap(bin_mapPath)
+	astarMap, err := aStar.LoadObstacleMap(bin_mapPath)
+	if err != nil {
+		return info.AbortAll, fmt.Errorf("地图加载二进制地图失败,退出: %w", err)
+	}
+
 	var ifRunMap bool
 	for i := 0; i < 20; i++ {
 		ifRunMap = MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.85)
@@ -270,7 +274,7 @@ func ChapterRun(
 			break
 		}
 		if i == 19 {
-			return GoBattleInterface, fmt.Errorf("未进入跑图界面,返回到跑图界面")
+			return info.GoToRunMapInterface, fmt.Errorf("未进入跑图界面,返回到跑图界面")
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -295,7 +299,7 @@ func ChapterRun(
 	//	}
 	//}()
 	ctx, cancel := context.WithCancel(context.Background())
-
+	defer cancel()
 	go func(ctx context.Context) {
 		for {
 			select {
@@ -322,70 +326,79 @@ func ChapterRun(
 
 	time.Sleep(1 * time.Second)
 	//=========================找第一个怪===================================
-	aStar.NavigateTo(bigMapPath, bin_mapPath,
+	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
 		aStar.Point{X: MonsterLocation[0].X, Y: MonsterLocation[0].Y},
 		func() aStar.Point {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			return aStar.Point{X: x, Y: y}
 		},
-	)
+	) {
+		return info.RetryStage, fmt.Errorf("第一个怪物寻路失败,重试本阶段")
+	}
 
 	//一直点击检测到的第一个目标位置，直到被消灭
 	aStar.YoloFind(yolo, bigMapPath)
 	//=========================找第一个怪===================================
 	time.Sleep(500 * time.Millisecond)
 	//=========================找第二个怪===================================
-	aStar.NavigateTo(bigMapPath, bin_mapPath,
+	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
 		aStar.Point{X: MonsterLocation[1].X, Y: MonsterLocation[1].Y},
 		func() aStar.Point {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			return aStar.Point{X: x, Y: y}
 		},
-	)
+	) {
+		return info.RetryStage, fmt.Errorf("第二个怪物寻路失败,重试本阶段")
+	}
 
 	//一直点击检测到的第一个目标位置，直到被消灭
 	aStar.YoloFind(yolo, bigMapPath)
 	//=========================找第二个怪===================================
 	time.Sleep(500 * time.Millisecond)
 	//=========================找第三个怪===================================
-	aStar.NavigateTo(bigMapPath, bin_mapPath,
+	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
 		aStar.Point{X: MonsterLocation[2].X, Y: MonsterLocation[2].Y},
 		func() aStar.Point {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			return aStar.Point{X: x, Y: y}
 		},
-	)
+	) {
+		return info.RetryStage, fmt.Errorf("第三个怪物寻路失败,重试本阶段")
+	}
 
 	//一直点击检测到的第一个目标位置，直到被消灭
 	aStar.YoloFind(yolo, bigMapPath)
 	//=========================找第三个怪===================================
 	time.Sleep(500 * time.Millisecond)
 	//=========================找第四个怪===================================
-	aStar.NavigateTo(bigMapPath, bin_mapPath,
+	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
 		aStar.Point{X: MonsterLocation[3].X, Y: MonsterLocation[3].Y},
 		func() aStar.Point {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			return aStar.Point{X: x, Y: y}
 		},
-	)
+	) {
+		return info.RetryStage, fmt.Errorf("第四个怪物寻路失败,重试本阶段")
+	}
 
 	//一直点击检测到的第一个目标位置，直到被消灭
 	aStar.YoloFind(yolo, bigMapPath)
 	//=========================找第四个怪===================================
 	time.Sleep(500 * time.Millisecond)
 	//=========================找第五个怪===================================
-	aStar.NavigateTo(bigMapPath, bin_mapPath,
+	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
 		aStar.Point{X: MonsterLocation[4].X, Y: MonsterLocation[4].Y},
 		func() aStar.Point {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			return aStar.Point{X: x, Y: y}
 		},
-	)
+	) {
+		return info.RetryStage, fmt.Errorf("第五个怪物寻路失败,重试本阶段")
+	}
 
 	//一直点击检测到的第一个目标位置，直到被消灭
 	aStar.YoloFind(yolo, bigMapPath)
-	cancel()
-	time.Sleep(2 * time.Second)
 
-	return StageDone, nil
+	time.Sleep(2 * time.Second)
+	return info.StageDone, nil
 }

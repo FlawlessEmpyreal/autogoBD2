@@ -1,24 +1,29 @@
 package mainProcess
 
 import (
+	"app/MyOpenCV"
+	"app/info"
 	"fmt"
 	"log"
+	"os"
 	"time"
+
+	"github.com/Dasongzi1366/AutoGo/motion"
 )
 
 // 单个阶段
 type Stage struct {
 	Name string
-	Run  func() (RecoveryAction, error)
+	Run  func() (info.RecoveryAction, error)
 }
 
 // 章节配置
 type ChapterConfig struct {
 	Name       string
-	Enabled    bool                             // 章节是否可执行
-	MaxRetries int                              // 单个阶段最大重试次数
-	Stages     []Stage                          // 阶段列表，按顺序执行
-	OnRecover  func(*StageError) RecoveryAction // 出错时的恢复策略
+	Enabled    bool                                  // 章节是否可执行
+	MaxRetries int                                   // 单个阶段最大重试次数
+	Stages     []Stage                               // 阶段列表，按顺序执行
+	OnRecover  func(*StageError) info.RecoveryAction // 出错时的恢复策略
 }
 
 // 中控
@@ -36,8 +41,8 @@ func (c *Controller) Register(cfg *ChapterConfig) {
 	}
 	if cfg.OnRecover == nil {
 		// 默认策略：重试当前阶段
-		cfg.OnRecover = func(e *StageError) RecoveryAction {
-			return RetryStage
+		cfg.OnRecover = func(e *StageError) info.RecoveryAction {
+			return info.RetryStage
 		}
 	}
 	c.chapters = append(c.chapters, cfg)
@@ -47,8 +52,10 @@ func (c *Controller) Register(cfg *ChapterConfig) {
 func (c *Controller) runChapter(cfg *ChapterConfig) error {
 	log.Printf("━━━ 开始章节: %s ━━━", cfg.Name)
 	retries := 0
-
+	GoToRunMap := 0
+	RetryChapter := 0
 	for i := 0; i < len(cfg.Stages); {
+
 		stage := cfg.Stages[i]
 		log.Printf("  ▶ 阶段 [%d/%d] %s", i+1, len(cfg.Stages), stage.Name)
 
@@ -56,6 +63,12 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 
 		if err != nil {
 			// 包装错误
+			if GoToRunMap > 2 {
+				action = info.SkipStage
+			}
+			if RetryChapter > 2 {
+				action = info.SkipChapter
+			}
 			stageErr := &StageError{
 				Chapter: cfg.Name,
 				Stage:   stage.Name,
@@ -66,11 +79,12 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 			log.Printf("  ❌ 错误: %v", stageErr)
 
 			switch stageErr.Action {
-			case RetryStage:
+			case info.RetryStage:
 				retries++
 				if retries > cfg.MaxRetries {
-					log.Printf("  ⛔ %s 超过最大重试次数(%d)，升级为 goToBattleInterface", stage.Name, cfg.MaxRetries)
-					goToBattleInterface()
+					log.Printf("  ⛔ %s 超过最大重试次数(%d)，升级为 goToRunMapInterface", stage.Name, cfg.MaxRetries)
+					goToRunMapInterface()
+					GoToRunMap++
 					retries = 0
 					// i 不变，主菜单处理完后重试当前阶段
 				} else {
@@ -79,35 +93,41 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 					// i 不变
 				}
 
-			case RetryChapter:
+			case info.RetryChapter:
 				log.Printf("  🔄 从头重跑章节 %s", cfg.Name)
+				GoToRunMap = 0
+				RetryChapter++
 				retries = 0
 				i = 0 // 回到第一个阶段
 
-			case GoBattleInterface:
+			case info.GoToRunMapInterface:
 				log.Printf("  🏠 回跑图界面...")
-				goToBattleInterface() // 阻塞，直到返回跑图界面
+				goToRunMapInterface() // 阻塞，直到返回跑图界面
+				GoToRunMap++
 				log.Printf("  ↩ 返回跑图界面完毕，重试阶段 %s", stage.Name)
 				retries = 0
 				// i 不变，重试当前阶段
 
-			case SkipStage:
+			case info.SkipStage:
 				log.Printf("  ⏭ 跳过阶段 %s", stage.Name)
+				GoToRunMap = 0 //重置单个阶段回跑图界面的次数
 				retries = 0
 				i++ // 跳到下一阶段
 
-			case SkipChapter:
-				log.Printf("  ⏭ 跳过整个章节 %s", cfg.Name)
+			case info.SkipChapter:
+				log.Printf("  ⏭ 章节重复次数太多,跳过整个章节 %s", cfg.Name)
 				return nil
 
-			case AbortAll:
+			case info.AbortAll:
 				log.Printf("  🛑 终止所有执行")
 				return fmt.Errorf("abort: %v", stageErr)
 			}
 		} else {
 			log.Printf("  ✅ %s 完成", stage.Name)
 			retries = 0 // 进入下一阶段时重置重试计数
-			i++         // 前进到下一阶段
+			GoToRunMap = 0
+			RetryChapter = 0
+			i++ // 前进到下一阶段
 			continue
 		}
 	}
@@ -145,6 +165,36 @@ func (c *Controller) RunByName(names ...string) error {
 	return nil
 }
 
-func goToBattleInterface() {
+func goToRunMapInterface() {
+	for i := 0; i < 3; i++ {
+		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //先判断是不是已经在跑图界面
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+		if MyOpenCV.ListColorsCmp(info.IF.If_Backbutton[:], 0.7) { //如果有返回按钮
+			motion.Click(info.MiscPoint.BackButton.X, info.MiscPoint.BackButton.Y, 0, 0)
+		}
+		time.Sleep(1500 * time.Millisecond)
+		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+		if MyOpenCV.ColorCmp(info.IF.If_BattleFieldRole.ColorsCmp, 0.8) {
+			motion.Click(644, 652, 0, 0) //点战场角色界面按钮,这里其实是退出战场角色界面
+		}
+		time.Sleep(1500 * time.Millisecond)
+		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+		//如果还不在那可能是打开钻石金币弹窗了点一下战场界面按钮
+		motion.Click(644, 652, 0, 0)                          //点战场角色界面按钮,关闭金币弹窗
+		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+			return
+		}
+		time.Sleep(1500 * time.Millisecond)
 
+	}
+	println("无法返回跑图界面")
+	os.Exit(0)
 }

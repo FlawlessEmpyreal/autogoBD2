@@ -87,13 +87,39 @@ type SceneConfig struct {
 }
 type InterfaceJudgment struct { // 界面识别配置
 	IF_Battle           SceneConfig    // 判断是否在战斗界面
-	IF_TpInterface      [2]SceneConfig // tp界面有两种
-	If_Map              SceneConfig    //判断是否在跑图界面
-	If_GenerateTP       SceneConfig    //判断是否生成传送
+	IF_TpInterface      [2]SceneConfig // tp界面有两种                     判断时使用MyOpencv.If_TpInterface
+	If_Map              SceneConfig    // 判断是否在跑图界面
+	If_GenerateTP       SceneConfig    // 判断是否生成传送
 	If_LoadingInterface SceneConfig    // 判断是否在加载界面
-	If_TpLeftButten     SceneConfig    // 地图中选择地图的左按钮找色
-	If_TpRightButten    SceneConfig    // 地图中选择地图的右按钮找色
+	If_TpLeftButton     SceneConfig    // 地图中选择地图的左按钮找色
+	If_TpRightButton    SceneConfig    // 地图中选择地图的右按钮找色
+	If_Backbutton       [2]SceneConfig // 判断是否有返回按钮，返回按钮有两种   判断时使用MyOpencv.If_Backbutton
+	If_BattleFieldRole  SceneConfig    // 判断是否在战场角色设置界面
 }
+
+type RecoveryAction int
+
+const (
+	StageDone           RecoveryAction = iota //阶段成功
+	RetryStage                                // 重试当前阶段
+	RetryChapter                              // 从第一个阶段重来
+	GoToRunMapInterface                       // 回战斗界面，处理完后重试当前阶段
+	SkipStage                                 // 跳过当前阶段，继续下一阶段
+	SkipChapter                               // 跳过整个章节
+	AbortAll                                  // 终止所有
+	WayHandleDone                             //寻路异常处理完成
+)
+
+type WayFindState int
+
+const (
+	STATE_Done             WayFindState = iota // 正常到达终点
+	STATE_Movement_timeout                     // 寻路超时
+	STATE_CDT_Useless                          // 坐标异常
+	STATE_Loss_Map                             //小地图丢失
+	STATE_Fixed_succes                         //handleLossMap 修理成功
+	STATE_Fixed_Failed                         //handleLossMap 修理失败
+)
 
 // 判断是否在战斗界面
 //var BattleInterface = []StructColorCmp{

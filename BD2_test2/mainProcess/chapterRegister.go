@@ -15,7 +15,7 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 		Stages: []Stage{
 			{
 				Name: "FindChapter",
-				Run: func() (RecoveryAction, error) {
+				Run: func() (info.RecoveryAction, error) {
 					return FindChapter(
 						info.Ch1.ChapterImg_path,
 						info.Ch1.Type_,
@@ -24,7 +24,7 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 			},
 			{
 				Name: "Tp_1",
-				Run: func() (RecoveryAction, error) {
+				Run: func() (info.RecoveryAction, error) {
 					return Chapter_Tp(
 						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
 						info.Ch1.MapConfig[1].TpPoint,
@@ -33,7 +33,7 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 			},
 			{
 				Name: "RunChapter1_1",
-				Run: func() (RecoveryAction, error) {
+				Run: func() (info.RecoveryAction, error) {
 					return ChapterRun(
 						info.Ch1.MapConfig[0].BigMapPath,
 						info.Ch1.MapConfig[0].Bin_mapPath,
@@ -43,7 +43,7 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 			},
 			{
 				Name: "Tp_2",
-				Run: func() (RecoveryAction, error) {
+				Run: func() (info.RecoveryAction, error) {
 					return Chapter_Tp(
 						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
 						info.Ch1.MapConfig[1].TpPoint,
@@ -52,7 +52,7 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 			},
 			{
 				Name: "RunChapter1_2",
-				Run: func() (RecoveryAction, error) {
+				Run: func() (info.RecoveryAction, error) {
 					return ChapterRun(
 						info.Ch1.MapConfig[1].BigMapPath,
 						info.Ch1.MapConfig[1].Bin_mapPath,

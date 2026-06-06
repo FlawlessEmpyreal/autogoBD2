@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -580,15 +579,6 @@ func abs(x int) int {
 //	}
 //}
 
-type WayFindState int
-
-const (
-	STATE_Done             WayFindState = iota // 正常到达终点
-	STATE_Movement_timeout                     // 寻路超时
-	STATE_CDT_Useless                          // 坐标异常
-	STATE_Loss_Map                             //小地图丢失
-)
-
 // 全局context，地图丢失时取消所有操作
 var (
 	globalCtx    context.Context
@@ -610,9 +600,9 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 	}()
 }
 
-func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) WayFindState {
+func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) info.WayFindState {
 	if len(path) == 0 {
-		return STATE_CDT_Useless // 假如路径为空当坐标异常处理，触发重新寻路
+		return info.STATE_CDT_Useless // 假如路径为空当坐标异常处理，触发重新寻路
 	}
 	defer myMotion.StopMove()
 
@@ -625,7 +615,7 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) W
 			// 检查是否被取消
 			select {
 			case <-ctx.Done():
-				return STATE_Loss_Map
+				return info.STATE_Loss_Map
 			default:
 			}
 
@@ -643,7 +633,7 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) W
 			}
 
 			if dist > info.ErrDist {
-				return STATE_CDT_Useless
+				return info.STATE_CDT_Useless
 			}
 
 			holdX, holdY := myMotion.CalcHoldPoint(cur.X, cur.Y, waypoint.X, waypoint.Y)
@@ -659,16 +649,16 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) W
 		}
 
 		if detachmentTime >= info.TimeoutCount {
-			return STATE_Movement_timeout
+			return info.STATE_Movement_timeout
 		}
 	}
 
-	return STATE_Done
+	return info.STATE_Done
 }
 
 // 封装寻路+异常处理，支持重试
-func NavigateTo(bigMapPath, bin_mapPath string, end Point,
-	getCurrentPos func() Point) WayFindState {
+func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
+	getCurrentPos func() Point) info.WayFindState {
 
 	for {
 		// 每次寻路前创建新的context
@@ -686,10 +676,7 @@ func NavigateTo(bigMapPath, bin_mapPath string, end Point,
 		}
 
 		start := Point{X: x, Y: y}
-		astarMap, err := LoadObstacleMap(bin_mapPath)
-		if err != nil {
-			panic(err)
-		}
+
 		//path := AStar(astarMap, start, end)
 		path := FindPath(astarMap, start, end)
 		if path == nil || len(path) == 0 {
@@ -702,21 +689,30 @@ func NavigateTo(bigMapPath, bin_mapPath string, end Point,
 		cancel() // 停止地图监测
 
 		switch state {
-		case STATE_Done:
-			return STATE_Done
+		case info.STATE_Done:
+			return info.STATE_Done
 
-		case STATE_Loss_Map:
+		case info.STATE_Loss_Map:
 			fmt.Println("地图丢失，进入异常处理")
-			handleLossMap(bigMapPath)
+			state := handleLossMap(bigMapPath)
+			if state != info.STATE_Fixed_succes {
+				return state
+			}
 			// 异常处理完后继续循环重试
 
-		case STATE_Movement_timeout:
+		case info.STATE_Movement_timeout:
 			fmt.Println("寻路超时，重新规划路径")
 			// 超时,一般时按键冲突，四周点两下然后重新寻路
-			motion.Click(640, 360, 0, 0)
-			time.Sleep(700 * time.Millisecond)
-			motion.Click(650, 340, 0, 0)
-		case STATE_CDT_Useless:
+			x1, y1, x2, y2 := myMotion.RandomPoint()
+			for i := 0; i < 2; i++ {
+				if i == 0 {
+					motion.Click(x1, y1, 0, 0)
+				} else {
+					motion.Click(x2, y2, 0, 0)
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+		case info.STATE_CDT_Useless:
 			//坐标异常,直接重新寻路
 			fmt.Println("坐标异常，等待后重试")
 			time.Sleep(500 * time.Millisecond)
@@ -725,20 +721,18 @@ func NavigateTo(bigMapPath, bin_mapPath string, end Point,
 }
 
 // 地图丢失的异常处理
-func handleLossMap(bigMapPath string) {
+func handleLossMap(bigMapPath string) info.WayFindState {
 	fmt.Println("执行异常处理")
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	time.Sleep(3 * time.Second)
 	for i := 0; i < 4; i++ {
-		if MyOpenCV.If_TpInterface(0.85) { //看看是不是进到传送界面
+		if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.8) { //看看是不是进到传送界面
 			for i := 0; i < 3; i++ {
-				motion.Click(105, 40, 0, 0)
-				if !MyOpenCV.If_TpInterface(0.85) {
-					return
+				motion.Click(105, 40, 0, 0)                           //退出传送界面
+				if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //检测到跑图界面
+					return info.STATE_Fixed_succes
 				}
 				if i == 2 {
-					println("进入传送界面未退出")
-					os.Exit(0)
+					return info.STATE_Fixed_Failed
 				}
 				time.Sleep(1000 * time.Millisecond)
 			}
@@ -747,15 +741,7 @@ func handleLossMap(bigMapPath string) {
 		inBattle := MyOpenCV.If_BattleInterface(0.85)
 		if !inBattle { // 没检测出来战斗界面, 有可能是图片识别错误也可能是网络延迟,在地图上随便点两下
 			// 生成一个随机角度
-			theta := r.Float64() * 2 * math.Pi
-
-			// 计算第一次点击的坐标
-			x1 := 640 + int(float64(150)*math.Cos(theta))
-			y1 := 360 + int(float64(150)*math.Sin(theta))
-
-			// 计算相反方向的坐标 (角度 + Pi)
-			x2 := 640 + int(float64(150)*math.Cos(theta+math.Pi))
-			y2 := 360 + int(float64(150)*math.Sin(theta+math.Pi))
+			x1, y1, x2, y2 := myMotion.RandomPoint()
 
 			for i := 0; i < 2; i++ {
 				if i == 0 {
@@ -767,7 +753,7 @@ func handleLossMap(bigMapPath string) {
 
 				x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 				if !(x == -1 && y == -1) {
-					return
+					return info.STATE_Fixed_succes
 				}
 			}
 		}
@@ -783,7 +769,7 @@ func handleLossMap(bigMapPath string) {
 				time.Sleep(1 * time.Second)
 				motion.Click(721, 433, 0, 0)
 			} else {
-				return
+				return info.STATE_Fixed_succes
 			}
 			time.Sleep(3 * time.Second)
 		}
@@ -791,12 +777,12 @@ func handleLossMap(bigMapPath string) {
 		time.Sleep(2 * time.Second)
 
 		if i == 3 {
-			println("地图消失问题未处理")
-			os.Exit(0)
+			println("astar解决小地图问题失败,返回上一层")
+			return info.STATE_Fixed_Failed
 		}
 		time.Sleep(1500 * time.Millisecond)
 	}
-
+	return info.STATE_Fixed_Failed
 }
 
 //===============路径点转按键控制=================

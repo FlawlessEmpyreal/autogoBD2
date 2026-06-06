@@ -52,18 +52,42 @@ var IF = InterfaceJudgment{
 			{X: 63, Y: 42, Color: "000000"},
 		},
 	},
-	If_TpLeftButten: SceneConfig{
+	If_TpLeftButton: SceneConfig{
 		ColorsCmp: []StructColorCmp{
 			{X: 300, Y: 344, Color: "dedad6"},
 			{X: 305, Y: 338, Color: "dedace"},
 			{X: 304, Y: 349, Color: "dddbd5"},
 		},
 	},
-	If_TpRightButten: SceneConfig{
+	If_TpRightButton: SceneConfig{
 		ColorsCmp: []StructColorCmp{
 			{X: 979, Y: 344, Color: "dedad6"},
 			{X: 974, Y: 338, Color: "dedace"},
 			{X: 975, Y: 349, Color: "dddbd5"},
+		},
+	},
+	If_Backbutton: [2]SceneConfig{
+		{
+			ColorsCmp: []StructColorCmp{
+				{X: 134, Y: 39, Color: "ffffff"},
+				{X: 136, Y: 36, Color: "fefefe"},
+				{X: 138, Y: 45, Color: "ededed"},
+			},
+		},
+		{
+			ColorsCmp: []StructColorCmp{
+				{X: 103, Y: 40, Color: "ffffff"},
+				{X: 108, Y: 35, Color: "f4f4f4"},
+				{X: 108, Y: 45, Color: "f2f2f2"},
+			},
+		},
+	},
+	If_BattleFieldRole: SceneConfig{
+		ColorsCmp: []StructColorCmp{
+			{X: 728, Y: 575, Color: "dedad6"},
+			{X: 879, Y: 581, Color: "dedad6"},
+			{X: 948, Y: 578, Color: "dedad6"},
+			{X: 1094, Y: 579, Color: "dedad6"},
 		},
 	},
 }
