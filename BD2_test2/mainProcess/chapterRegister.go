@@ -14,7 +14,8 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 		MaxRetries: 3,
 		Stages: []Stage{
 			{
-				Name: "FindChapter",
+				Name:  "FindChapter",
+				type_: "FindChapter",
 				Run: func() (info.RecoveryAction, error) {
 					return FindChapter(
 						info.Ch1.ChapterImg_path,
@@ -23,16 +24,18 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 				},
 			},
 			{
-				Name: "Tp_1",
+				Name:  "Tp_1",
+				type_: "Tp",
 				Run: func() (info.RecoveryAction, error) {
 					return Chapter_Tp(
-						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
-						info.Ch1.MapConfig[1].TpPoint,
+						info.Ch1.MapConfig[0].MapFind.MapColorsCmp,
+						info.Ch1.MapConfig[0].TpPoint,
 					)
 				},
 			},
 			{
-				Name: "RunChapter1_1",
+				Name:  "RunChapter1_1",
+				type_: "RunChapter",
 				Run: func() (info.RecoveryAction, error) {
 					return ChapterRun(
 						info.Ch1.MapConfig[0].BigMapPath,
@@ -42,7 +45,8 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 				},
 			},
 			{
-				Name: "Tp_2",
+				Name:  "Tp_2",
+				type_: "Tp",
 				Run: func() (info.RecoveryAction, error) {
 					return Chapter_Tp(
 						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
@@ -51,7 +55,8 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 				},
 			},
 			{
-				Name: "RunChapter1_2",
+				Name:  "RunChapter1_2",
+				type_: "RunChapter",
 				Run: func() (info.RecoveryAction, error) {
 					return ChapterRun(
 						info.Ch1.MapConfig[1].BigMapPath,

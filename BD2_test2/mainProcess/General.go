@@ -4,7 +4,6 @@ import (
 	"app/MyOpenCV"
 	"app/aStar"
 	"app/info"
-	"context"
 	"errors"
 	"fmt"
 	"image"
@@ -160,7 +159,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		motion.Click(553, 652, 0, 0)
 		time.Sleep(1 * time.Second)
 		x, y := opencv.FindImage(37, 587, 1202, 681, img, false, false, 0.5, 0)
-		println(x, y)
+		//println(x, y)
 		if x != -1 && y != -1 {
 			break
 		} else {
@@ -177,22 +176,38 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 			time.Sleep(300 * time.Millisecond)
 		} else if type_ == "branch" {
 			motion.Click(info.MiscPoint.BranchChapterChoose.X, info.MiscPoint.BranchChapterChoose.Y, 0, 0)
+			time.Sleep(300 * time.Millisecond)
 		} else {
 			println("type_的值只能是main或者branch")
 			os.Exit(0)
 		}
 	}
 
-	x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0) //先找本页面有没有目标章节
-	if x != -1 && y != -1 {
+	x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0) //先找本页面有没有目标章节,如果有直接点击然后退出
+	if x == -1 && y == -1 {
 		motion.Click(x+10, y+5, 0, 0)
+
+		time.Sleep(1000 * time.Millisecond)
+
 		for i := 0; i < 6; i++ { //确认退出选章节界面
 			x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0)
 			if x == -1 && y == -1 {
-				time.Sleep(3 * time.Second)
-				return info.GoToRunMapInterface, errors.New("未找到目标章节,可能是主线或支线章节未切换或网络延迟,退到跑图界面重试")
+				break
 			}
 		}
+
+		for i := 0; i < 60; i++ { //持续检测是否在加载界面
+			if !MyOpenCV.If_LoadingInterface(0.8) {
+				break
+			}
+			if i == 19 {
+				println("卡在加载界面一分钟,退出进程")
+				os.Exit(0)
+			}
+			time.Sleep(1 * time.Second)
+		}
+
+		return info.StageDone, nil
 	}
 
 	for i := 0; i < 4; i++ { //拉到最左边
@@ -298,31 +313,31 @@ func ChapterRun(
 	//		time.Sleep(200 * time.Millisecond)
 	//	}
 	//}()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done(): // 监听到上下文被取消，主动退出
-				fmt.Println("收到Context信号，释放技能的协程退出")
-				return
-			default:
-				if info.Accelerate {
-					motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0) //加速
-					time.Sleep(1 * time.Second)
-				}
-				if info.Subdue {
-					motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0) //压制
-					time.Sleep(1 * time.Second)
-				}
-				if info.Stealth {
-					motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0) //隐身
-					time.Sleep(1 * time.Second)
-				}
-
-			}
-		}
-	}(ctx)
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel()
+	//go func(ctx context.Context) {
+	//	for {
+	//		select {
+	//		case <-ctx.Done(): // 监听到上下文被取消，主动退出
+	//			fmt.Println("收到Context信号，释放技能的协程退出")
+	//			return
+	//		default:
+	//			if info.Accelerate {
+	//				motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0) //加速
+	//				time.Sleep(1 * time.Second)
+	//			}
+	//			if info.Subdue {
+	//				motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0) //压制
+	//				time.Sleep(1 * time.Second)
+	//			}
+	//			if info.Stealth {
+	//				motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0) //隐身
+	//				time.Sleep(1 * time.Second)
+	//			}
+	//
+	//		}
+	//	}
+	//}(ctx)
 
 	time.Sleep(1 * time.Second)
 	//=========================找第一个怪===================================

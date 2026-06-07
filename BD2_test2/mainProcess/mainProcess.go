@@ -9,5 +9,5 @@ func MainProcess() {
 	CtrlMainStoryline.RunAll()
 
 	//执行指定章节
-	CtrlMainStoryline.RunByName("chapter2", "chapter3")
+	//CtrlMainStoryline.RunByName("chapter2", "chapter3")
 }

@@ -514,8 +514,6 @@ func FindPath(m *AStarMap, start, end Point) []Point {
 	}
 
 	// Douglas-Peucker简化
-	// 0.5太激进，改成2.0保留更多转折点
-	//simplified := DouglasPeucker(raw, 0.5)
 	simplified := DouglasPeucker(raw, 0.5)
 
 	// 推向通道中心
@@ -591,6 +589,7 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 		for {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			if x == -1 && y == -1 {
+				println("==========循环获取坐标出错")
 				fmt.Println("地图丢失，终止所有操作")
 				cancelFunc() // 取消所有操作
 				return
@@ -598,6 +597,44 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}()
+}
+
+func interruptibleSleep(ctx context.Context, d time.Duration) {
+	t := time.NewTimer(d)
+	defer t.Stop() // 确保定时器资源被回收
+	select {
+	case <-t.C:
+		// 正常等待
+	case <-ctx.Done():
+		// 收到取消信号，立即返回
+	}
+}
+
+// 启动技能循环线程
+func SkillLoop(ctx context.Context) {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done(): // 监听到上下文被取消，主动退出
+				fmt.Println("收到Context信号，释放技能的协程退出")
+				return
+			default:
+				if info.Accelerate {
+					motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0) //加速
+					interruptibleSleep(ctx, 1*time.Second)
+				}
+				if info.Subdue {
+					motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0) //压制
+					interruptibleSleep(ctx, 1*time.Second)
+				}
+				if info.Stealth {
+					motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0) //隐身
+					interruptibleSleep(ctx, 1*time.Second)
+				}
+
+			}
+		}
+	}(ctx)
 }
 
 func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) info.WayFindState {
@@ -615,6 +652,7 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) i
 			// 检查是否被取消
 			select {
 			case <-ctx.Done():
+				fmt.Println("ctx被取消，原因:", ctx.Err())
 				return info.STATE_Loss_Map
 			default:
 			}
@@ -667,10 +705,16 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 		// 启动地图监测
 		StartMapMonitor(bigMapPath, cancel)
 
+		ctx2, cancel2 := context.WithCancel(context.Background())
+		SkillLoop(ctx2)
+		defer cancel2()
+
 		// 获取当前坐标
 		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 		if x == -1 && y == -1 {
 			cancel()
+			cancel2()
+			println("==========获取当前坐标出错")
 			handleLossMap(bigMapPath) // 异常处理
 			continue                  // 处理完后重试
 		}
@@ -694,6 +738,7 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 
 		case info.STATE_Loss_Map:
 			fmt.Println("地图丢失，进入异常处理")
+			cancel2()
 			state := handleLossMap(bigMapPath)
 			if state != info.STATE_Fixed_succes {
 				return state
@@ -756,22 +801,22 @@ func handleLossMap(bigMapPath string) info.WayFindState {
 					return info.STATE_Fixed_succes
 				}
 			}
-		}
-
-		//看看是不是进入战斗界面了
-		for i := 0; i < 4; i++ {
-			inBattle = MyOpenCV.If_BattleInterface(0.85)
-			if inBattle { //退出战斗
-				println("战斗界面,退出战斗")
-				motion.Click(1178, 42, 0, 0)
-				time.Sleep(1 * time.Second)
-				motion.Click(510, 660, 0, 0)
-				time.Sleep(1 * time.Second)
-				motion.Click(721, 433, 0, 0)
-			} else {
-				return info.STATE_Fixed_succes
+		} else {
+			//进入战斗界面退出战斗界面
+			for i := 0; i < 4; i++ {
+				inBattle = MyOpenCV.If_BattleInterface(0.85)
+				if inBattle { //退出战斗
+					println("战斗界面,退出战斗")
+					motion.Click(1178, 42, 0, 0)
+					time.Sleep(1 * time.Second)
+					motion.Click(510, 660, 0, 0)
+					time.Sleep(1 * time.Second)
+					motion.Click(721, 433, 0, 0)
+				} else {
+					return info.STATE_Fixed_succes
+				}
+				time.Sleep(3 * time.Second)
 			}
-			time.Sleep(3 * time.Second)
 		}
 
 		time.Sleep(2 * time.Second)

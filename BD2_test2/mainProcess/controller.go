@@ -13,8 +13,9 @@ import (
 
 // 单个阶段
 type Stage struct {
-	Name string
-	Run  func() (info.RecoveryAction, error)
+	type_ string
+	Name  string
+	Run   func() (info.RecoveryAction, error)
 }
 
 // 章节配置
@@ -63,8 +64,14 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 
 		if err != nil {
 			// 包装错误
-			if GoToRunMap > 2 {
+			if stage.type_ != "FindChapter" && GoToRunMap > 2 { //找章节不能跳过
+				if stage.type_ == "Tp" {
+					i++
+				} //tp报错太多这张图也不用跑了
 				action = info.SkipStage
+			} else if stage.type_ == "FindChapter" && GoToRunMap > 2 { //找章节老失败直接跳过本章
+				log.Printf("  ⏭ 寻找章节失败三次跳过本章节")
+				action = info.SkipChapter
 			}
 			if RetryChapter > 2 {
 				action = info.SkipChapter
@@ -103,6 +110,7 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 			case info.GoToRunMapInterface:
 				log.Printf("  🏠 回跑图界面...")
 				goToRunMapInterface() // 阻塞，直到返回跑图界面
+				log.Printf("已返回跑图界面次数:%d", GoToRunMap)
 				GoToRunMap++
 				log.Printf("  ↩ 返回跑图界面完毕，重试阶段 %s", stage.Name)
 				retries = 0
