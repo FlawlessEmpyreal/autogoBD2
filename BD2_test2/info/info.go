@@ -25,8 +25,8 @@ var (
 	//===================skill para=============
 
 	Accelerate bool = true  //加速
-	Stealth    bool = false //隐身
 	Subdue     bool = true  //压制
+	Stealth    bool = false //隐身
 
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//================astar para==============
@@ -49,8 +49,8 @@ type ButtenPoint struct {
 
 var BP = ButtenPoint{
 	Accelerate: image.Point{1000, 650},
-	Stealth:    image.Point{967, 561},
-	Subdue:     image.Point{1000, 480},
+	Subdue:     image.Point{967, 561},
+	Stealth:    image.Point{1000, 480},
 }
 
 type StructColorCmp struct { //找色点
@@ -80,6 +80,7 @@ type ChapterConfig struct {
 	ChapterImg_path string      //找章节时用的图片
 	MapConfig       []MapConfig //地图信息
 	Type_           string      //主线还是支线
+	YoloLable       string
 }
 
 type SceneConfig struct {

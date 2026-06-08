@@ -142,7 +142,7 @@ func Chapter_Tp(
 			return info.RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
 		}
 	}
-	time.Sleep(5 * time.Second) //成功传送后等五秒要不容易直接跳步骤
+	time.Sleep(2 * time.Second) //成功传送后等五秒要不容易直接跳步骤
 	println("进入地图")
 	return info.StageDone, nil
 }
@@ -158,7 +158,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 	for i := 0; i < 3; i++ { //进入章节选择
 		motion.Click(553, 652, 0, 0)
 		time.Sleep(1 * time.Second)
-		x, y := opencv.FindImage(37, 587, 1202, 681, img, false, false, 0.5, 0)
+		x, y := opencv.FindImage(37, 670, 1202, 720, img, false, false, 0.5, 0)
 		//println(x, y)
 		if x != -1 && y != -1 {
 			break
@@ -182,15 +182,16 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 			os.Exit(0)
 		}
 	}
+	time.Sleep(2 * time.Second)
 
 	x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0) //先找本页面有没有目标章节,如果有直接点击然后退出
-	if x == -1 && y == -1 {
+	if x != -1 && y != -1 {
 		motion.Click(x+10, y+5, 0, 0)
 
 		time.Sleep(1000 * time.Millisecond)
 
 		for i := 0; i < 6; i++ { //确认退出选章节界面
-			x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0)
+			x, y := opencv.FindImage(1, 585, 1276, 677, img, false, false, 0.8, 0)
 			if x == -1 && y == -1 {
 				break
 			}
@@ -206,7 +207,6 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 			}
 			time.Sleep(1 * time.Second)
 		}
-
 		return info.StageDone, nil
 	}
 
@@ -223,10 +223,13 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		}
 		motion.Swipe(937, 636, 549, 636, 1000, 0, 0)
 		time.Sleep(2000 * time.Millisecond)
+		if i == 5 {
+			return info.StageDone, fmt.Errorf("寻找章节失败未找到章节,重新执行本阶段")
+		}
 	}
 
 	for i := 0; i < 6; i++ { //确认退出选章节界面
-		x, y := opencv.FindImage(1, 585, 1276, 677, chapterImg, false, false, 0.8, 0)
+		x, y := opencv.FindImage(1, 585, 1276, 677, img, false, false, 0.8, 0)
 		if x == -1 && y == -1 {
 			break
 		}
@@ -294,13 +297,13 @@ func ChapterRun(
 		time.Sleep(1 * time.Second)
 	}
 
-	yolo := yolo.New("v5", 4, info.YoloParamPath, info.YoloBinPath, info.Yolo_labels)
+	yolo := yolo.New("v5", 4, info.YoloParamPath, info.YoloBinPath, info.Ch1.YoloLable)
 	if yolo == nil {
 		fmt.Println("模型加载失败,直接退出")
 		os.Exit(0)
 	}
 	defer yolo.Close()
-	fmt.Println("模型加载成功")
+	fmt.Println("模型加载成功,标签:", info.Ch1.YoloLable)
 
 	//var mu sync.Mutex
 	//go func() {
@@ -340,80 +343,109 @@ func ChapterRun(
 	//}(ctx)
 
 	time.Sleep(1 * time.Second)
-	//=========================找第一个怪===================================
-	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
-		aStar.Point{X: MonsterLocation[0].X, Y: MonsterLocation[0].Y},
-		func() aStar.Point {
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-			return aStar.Point{X: x, Y: y}
-		},
-	) {
-		return info.RetryStage, fmt.Errorf("第一个怪物寻路失败,重试本阶段")
+	var i int
+	for i = 0; i < len(MonsterLocation); i++ {
+		if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
+			aStar.Point{X: MonsterLocation[i].X, Y: MonsterLocation[i].Y},
+			func() aStar.Point {
+				x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+				return aStar.Point{X: x, Y: y}
+			},
+		) {
+			return info.RetryStage, fmt.Errorf("第%d个怪物寻路失败,重试本阶段", i)
+		}
+
+		//一直点击检测到的第一个目标位置，直到被消灭
+		if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath) {
+			return info.RetryStage, fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
+		}
+
+		time.Sleep(500 * time.Millisecond)
 	}
+	////=========================找第一个怪===================================
+	//if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
+	//	aStar.Point{X: MonsterLocation[0].X, Y: MonsterLocation[0].Y},
+	//	func() aStar.Point {
+	//		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+	//		return aStar.Point{X: x, Y: y}
+	//	},
+	//) {
+	//	return info.RetryStage, fmt.Errorf("第一个怪物寻路失败,重试本阶段")
+	//}
+	//
+	////一直点击检测到的第一个目标位置，直到被消灭
+	//if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath){
+	//	return info.RetryStage,fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
+	//}
+	////=========================找第一个怪===================================
+	//time.Sleep(500 * time.Millisecond)
+	////=========================找第二个怪===================================
+	//if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
+	//	aStar.Point{X: MonsterLocation[1].X, Y: MonsterLocation[1].Y},
+	//	func() aStar.Point {
+	//		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+	//		return aStar.Point{X: x, Y: y}
+	//	},
+	//) {
+	//	return info.RetryStage, fmt.Errorf("第二个怪物寻路失败,重试本阶段")
+	//}
+	//
+	////一直点击检测到的第一个目标位置，直到被消灭
+	//if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath){
+	//	return info.RetryStage,fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
+	//}
+	////=========================找第二个怪===================================
+	//time.Sleep(500 * time.Millisecond)
+	////=========================找第三个怪===================================
+	//if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
+	//	aStar.Point{X: MonsterLocation[2].X, Y: MonsterLocation[2].Y},
+	//	func() aStar.Point {
+	//		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+	//		return aStar.Point{X: x, Y: y}
+	//	},
+	//) {
+	//	return info.RetryStage, fmt.Errorf("第三个怪物寻路失败,重试本阶段")
+	//}
+	//
+	////一直点击检测到的第一个目标位置，直到被消灭
+	//if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath){
+	//	return info.RetryStage,fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
+	//}
+	////=========================找第三个怪===================================
+	//time.Sleep(500 * time.Millisecond)
+	////=========================找第四个怪===================================
+	//if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
+	//	aStar.Point{X: MonsterLocation[3].X, Y: MonsterLocation[3].Y},
+	//	func() aStar.Point {
+	//		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+	//		return aStar.Point{X: x, Y: y}
+	//	},
+	//) {
+	//	return info.RetryStage, fmt.Errorf("第四个怪物寻路失败,重试本阶段")
+	//}
+	//
+	////一直点击检测到的第一个目标位置，直到被消灭
+	//if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath){
+	//	return info.RetryStage,fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
+	//}
+	////=========================找第四个怪===================================
+	//time.Sleep(500 * time.Millisecond)
+	////=========================找第五个怪===================================
+	//if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
+	//	aStar.Point{X: MonsterLocation[4].X, Y: MonsterLocation[4].Y},
+	//	func() aStar.Point {
+	//		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+	//		return aStar.Point{X: x, Y: y}
+	//	},
+	//) {
+	//	return info.RetryStage, fmt.Errorf("第五个怪物寻路失败,重试本阶段")
+	//}
+	//
+	////一直点击检测到的第一个目标位置，直到被消灭
+	//if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath){
+	//	return info.RetryStage,fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
+	//}
 
-	//一直点击检测到的第一个目标位置，直到被消灭
-	aStar.YoloFind(yolo, bigMapPath)
-	//=========================找第一个怪===================================
-	time.Sleep(500 * time.Millisecond)
-	//=========================找第二个怪===================================
-	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
-		aStar.Point{X: MonsterLocation[1].X, Y: MonsterLocation[1].Y},
-		func() aStar.Point {
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-			return aStar.Point{X: x, Y: y}
-		},
-	) {
-		return info.RetryStage, fmt.Errorf("第二个怪物寻路失败,重试本阶段")
-	}
-
-	//一直点击检测到的第一个目标位置，直到被消灭
-	aStar.YoloFind(yolo, bigMapPath)
-	//=========================找第二个怪===================================
-	time.Sleep(500 * time.Millisecond)
-	//=========================找第三个怪===================================
-	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
-		aStar.Point{X: MonsterLocation[2].X, Y: MonsterLocation[2].Y},
-		func() aStar.Point {
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-			return aStar.Point{X: x, Y: y}
-		},
-	) {
-		return info.RetryStage, fmt.Errorf("第三个怪物寻路失败,重试本阶段")
-	}
-
-	//一直点击检测到的第一个目标位置，直到被消灭
-	aStar.YoloFind(yolo, bigMapPath)
-	//=========================找第三个怪===================================
-	time.Sleep(500 * time.Millisecond)
-	//=========================找第四个怪===================================
-	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
-		aStar.Point{X: MonsterLocation[3].X, Y: MonsterLocation[3].Y},
-		func() aStar.Point {
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-			return aStar.Point{X: x, Y: y}
-		},
-	) {
-		return info.RetryStage, fmt.Errorf("第四个怪物寻路失败,重试本阶段")
-	}
-
-	//一直点击检测到的第一个目标位置，直到被消灭
-	aStar.YoloFind(yolo, bigMapPath)
-	//=========================找第四个怪===================================
-	time.Sleep(500 * time.Millisecond)
-	//=========================找第五个怪===================================
-	if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
-		aStar.Point{X: MonsterLocation[4].X, Y: MonsterLocation[4].Y},
-		func() aStar.Point {
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-			return aStar.Point{X: x, Y: y}
-		},
-	) {
-		return info.RetryStage, fmt.Errorf("第五个怪物寻路失败,重试本阶段")
-	}
-
-	//一直点击检测到的第一个目标位置，直到被消灭
-	aStar.YoloFind(yolo, bigMapPath)
-
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	return info.StageDone, nil
 }

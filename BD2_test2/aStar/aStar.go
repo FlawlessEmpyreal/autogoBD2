@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -589,6 +588,7 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 		for {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			if x == -1 && y == -1 {
+				println("==========循环获取坐标:", x, y)
 				println("==========循环获取坐标出错")
 				fmt.Println("地图丢失，终止所有操作")
 				cancelFunc() // 取消所有操作
@@ -606,7 +606,20 @@ func interruptibleSleep(ctx context.Context, d time.Duration) {
 	case <-t.C:
 		// 正常等待
 	case <-ctx.Done():
+		return
 		// 收到取消信号，立即返回
+	}
+}
+
+// safeExecute 在执行实际操作前检查上下文是否已被取消
+func safeExecute(ctx context.Context, action func()) bool {
+	select {
+	case <-ctx.Done():
+
+		return false // 已取消，不执行
+	default:
+		action()
+		return true // 未取消，执行动作
 	}
 }
 
@@ -620,18 +633,29 @@ func SkillLoop(ctx context.Context) {
 				return
 			default:
 				if info.Accelerate {
-					motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0) //加速
+					if !safeExecute(ctx, func() {
+						motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0)
+					}) {
+						return // 如果在点击前被取消，立刻退出整个循环
+					}
 					interruptibleSleep(ctx, 1*time.Second)
 				}
 				if info.Subdue {
-					motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0) //压制
+					if !safeExecute(ctx, func() {
+						motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0)
+					}) {
+						return
+					}
 					interruptibleSleep(ctx, 1*time.Second)
 				}
 				if info.Stealth {
-					motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0) //隐身
+					if !safeExecute(ctx, func() {
+						motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0)
+					}) {
+						return
+					}
 					interruptibleSleep(ctx, 1*time.Second)
 				}
-
 			}
 		}
 	}(ctx)
@@ -711,12 +735,16 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 
 		// 获取当前坐标
 		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+		println("==========获取当前坐标:", x, y)
 		if x == -1 && y == -1 {
 			cancel()
 			cancel2()
 			println("==========获取当前坐标出错")
-			handleLossMap(bigMapPath) // 异常处理
-			continue                  // 处理完后重试
+			state := handleLossMap(bigMapPath) // 异常处理
+			if state != info.STATE_Fixed_succes {
+				return state
+			}
+			continue // 处理完后重试
 		}
 
 		start := Point{X: x, Y: y}
@@ -768,65 +796,60 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 // 地图丢失的异常处理
 func handleLossMap(bigMapPath string) info.WayFindState {
 	fmt.Println("执行异常处理")
-	time.Sleep(3 * time.Second)
-	for i := 0; i < 4; i++ {
-		if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.8) { //看看是不是进到传送界面
-			for i := 0; i < 3; i++ {
-				motion.Click(105, 40, 0, 0)                           //退出传送界面
-				if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //检测到跑图界面
-					return info.STATE_Fixed_succes
-				}
-				if i == 2 {
-					return info.STATE_Fixed_Failed
-				}
-				time.Sleep(1000 * time.Millisecond)
+	time.Sleep(2 * time.Second)
+
+	if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.8) { //看看是不是进到传送界面
+		for i := 0; i < 3; i++ {
+			motion.Click(105, 40, 0, 0)                           //退出传送界面
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //检测到跑图界面
+				return info.STATE_Fixed_succes
 			}
+			if i == 2 {
+				return info.STATE_Fixed_Failed
+			} //没检测到
+			time.Sleep(2000 * time.Millisecond)
 		}
-
-		inBattle := MyOpenCV.If_BattleInterface(0.85)
-		if !inBattle { // 没检测出来战斗界面, 有可能是图片识别错误也可能是网络延迟,在地图上随便点两下
-			// 生成一个随机角度
-			x1, y1, x2, y2 := myMotion.RandomPoint()
-
-			for i := 0; i < 2; i++ {
-				if i == 0 {
-					motion.Click(x1, y1, 0, 0)
-				} else {
-					motion.Click(x2, y2, 0, 0)
-				}
-				time.Sleep(1000 * time.Millisecond)
-
-				x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-				if !(x == -1 && y == -1) {
-					return info.STATE_Fixed_succes
-				}
-			}
-		} else {
-			//进入战斗界面退出战斗界面
-			for i := 0; i < 4; i++ {
-				inBattle = MyOpenCV.If_BattleInterface(0.85)
-				if inBattle { //退出战斗
-					println("战斗界面,退出战斗")
-					motion.Click(1178, 42, 0, 0)
-					time.Sleep(1 * time.Second)
-					motion.Click(510, 660, 0, 0)
-					time.Sleep(1 * time.Second)
-					motion.Click(721, 433, 0, 0)
-				} else {
-					return info.STATE_Fixed_succes
-				}
-				time.Sleep(3 * time.Second)
-			}
-		}
-
-		time.Sleep(2 * time.Second)
-
-		if i == 3 {
-			println("astar解决小地图问题失败,返回上一层")
-			return info.STATE_Fixed_Failed
-		}
-		time.Sleep(1500 * time.Millisecond)
 	}
+
+	inBattle := MyOpenCV.If_BattleInterface(0.85)
+	if !inBattle { // 没检测出来战斗界面, 有可能是图片识别错误也可能是网络延迟,在地图上随便点两下
+		// 生成一个随机角度
+		x1, y1, x2, y2 := myMotion.RandomPoint()
+
+		for i := 0; i < 2; i++ {
+			if i == 0 {
+				motion.Click(x1, y1, 0, 0)
+			} else {
+				motion.Click(x2, y2, 0, 0)
+			}
+			time.Sleep(1000 * time.Millisecond)
+
+			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+			if !(x == -1 && y == -1) {
+				return info.STATE_Fixed_succes
+			}
+		}
+	} else {
+		//进入战斗界面退出战斗界面
+		for i := 0; i < 4; i++ {
+			inBattle = MyOpenCV.If_BattleInterface(0.85)
+			if inBattle { //退出战斗
+				println("战斗界面,退出战斗")
+				motion.Click(1178, 42, 0, 0)
+				time.Sleep(1 * time.Second)
+				motion.Click(510, 660, 0, 0)
+				time.Sleep(1 * time.Second)
+				motion.Click(721, 433, 0, 0)
+			} else if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //没返回到跑图界面
+				return info.STATE_Fixed_succes
+			}
+			if i == 3 { //没返回到跑图界面
+				return info.STATE_Fixed_Failed
+			}
+			time.Sleep(2 * time.Second)
+		}
+	}
+
 	return info.STATE_Fixed_Failed
 }
 
@@ -889,7 +912,7 @@ func handleLossMap(bigMapPath string) info.WayFindState {
 //
 ////===============路径平滑（减少路径点）=================
 
-func YoloFind(yoloPtr *yolo.Yolo, bigMapPath string) {
+func YoloFind(yoloPtr *yolo.Yolo, bigMapPath string) info.WayFindState {
 	println("yolo找怪")
 	for {
 		for i := 0; i < 3; i++ {
@@ -900,8 +923,9 @@ func YoloFind(yoloPtr *yolo.Yolo, bigMapPath string) {
 				break
 			}
 			if i == 2 {
-				println("yolo找怪时进入战斗,并且未退出战斗,退出进程")
-				os.Exit(0)
+				fmt.Errorf("yolo找怪时进入战斗,并且未退出战斗,重新开始本阶段")
+				return info.STATE_Fixed_Failed
+
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -912,4 +936,5 @@ func YoloFind(yoloPtr *yolo.Yolo, bigMapPath string) {
 		motion.Click(results[0].CenterX, results[0].CenterY, 0, 0)
 		time.Sleep(1 * time.Second)
 	}
+	return info.STATE_Done
 }

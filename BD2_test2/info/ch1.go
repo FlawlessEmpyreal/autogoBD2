@@ -12,6 +12,7 @@ var Ch1 = ChapterConfig{
 	ChapterName:     "chapter1",
 	ChapterImg_path: path.Join(imgRoot, "misc/chapter1Selcet.png"),
 	Type_:           "main",
+	YoloLable:       "chapter1_monster",
 	MapConfig: []MapConfig{
 		{
 			MapName:     1,
