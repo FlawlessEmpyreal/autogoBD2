@@ -278,6 +278,8 @@ func ChapterRun(
 	bigMapPath, //大地图路径
 	bin_mapPath string, //二值化地图路径
 	MonsterLocation []image.Point, //怪物位置
+	YoloLabel string,
+	type_ string, //使用哪种模型
 ) (info.RecoveryAction, error) {
 
 	astarMap, err := aStar.LoadObstacleMap(bin_mapPath)
@@ -285,7 +287,7 @@ func ChapterRun(
 		return info.AbortAll, fmt.Errorf("地图加载二进制地图失败,退出: %w", err)
 	}
 
-	var ifRunMap bool
+	var ifRunMap bool //检查是否在跑图界面
 	for i := 0; i < 20; i++ {
 		ifRunMap = MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.85)
 		if ifRunMap {
@@ -297,13 +299,24 @@ func ChapterRun(
 		time.Sleep(1 * time.Second)
 	}
 
-	yolo := yolo.New("v5", 4, info.YoloParamPath, info.YoloBinPath, info.Ch1.YoloLable)
-	if yolo == nil {
-		fmt.Println("模型加载失败,直接退出")
-		os.Exit(0)
+	var yoloModel *yolo.Yolo
+	if type_ == "main" {
+		yoloModel = yolo.New("v5", 4, info.YoloParamPath_Main, info.YoloBinPath_Main, YoloLabel)
+		if yoloModel == nil {
+			fmt.Println("模型加载失败,直接退出")
+			os.Exit(0)
+		}
+		defer yoloModel.Close()
+		fmt.Println("模型加载成功,标签:", YoloLabel)
+	} else if type_ == "branch" {
+		yoloModel = yolo.New("v5", 4, info.YoloParamPath_Branch, info.YoloBinPath_Branch, YoloLabel)
+		if yoloModel == nil {
+			fmt.Println("模型加载失败,直接退出")
+			os.Exit(0)
+		}
+		defer yoloModel.Close()
+		fmt.Println("模型加载成功,标签:", YoloLabel)
 	}
-	defer yolo.Close()
-	fmt.Println("模型加载成功,标签:", info.Ch1.YoloLable)
 
 	//var mu sync.Mutex
 	//go func() {
@@ -356,7 +369,7 @@ func ChapterRun(
 		}
 
 		//一直点击检测到的第一个目标位置，直到被消灭
-		if info.STATE_Done != aStar.YoloFind(yolo, bigMapPath) {
+		if info.STATE_Done != aStar.YoloFind(yoloModel, bigMapPath) {
 			return info.RetryStage, fmt.Errorf("yolo找怪时小地图丢失,重新开始本阶段")
 		}
 

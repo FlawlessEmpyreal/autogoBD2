@@ -6,9 +6,17 @@ import (
 	"app/info"
 )
 
-func RegisterChapters(CtrlMainStoryline *Controller) {
+func RegisterChapters(Ctrl *Controller) {
 	// -------- Chapter 1 --------
-	CtrlMainStoryline.Register(&ChapterConfig{
+	if info.RegCh1 {
+		RegChapter1(Ctrl)
+	}
+	// -------- Chapter 1 --------
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+}
+
+func RegChapter1(Ctrl *Controller) {
+	Ctrl.Register(&ChapterConfig{
 		Name:       "chapter1",
 		Enabled:    true,
 		MaxRetries: 3,
@@ -41,6 +49,8 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 						info.Ch1.MapConfig[0].BigMapPath,
 						info.Ch1.MapConfig[0].Bin_mapPath,
 						info.Ch1.MapConfig[0].MonsterLocation,
+						info.Ch1.YoloLable,
+						"main",
 					)
 				},
 			},
@@ -62,13 +72,13 @@ func RegisterChapters(CtrlMainStoryline *Controller) {
 						info.Ch1.MapConfig[1].BigMapPath,
 						info.Ch1.MapConfig[1].Bin_mapPath,
 						info.Ch1.MapConfig[1].MonsterLocation,
+						info.Ch1.YoloLable,
+						"main",
 					)
 				},
 			},
 		},
 	})
-	// -------- Chapter 1 --------
-	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 }
 
 //func Chapter1() {

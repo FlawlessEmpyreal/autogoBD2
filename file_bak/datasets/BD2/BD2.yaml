@@ -1,0 +1,13 @@
+path: ../datasets/BD2
+train:
+  - images
+val:
+  - images
+test:
+
+names:
+  0: chapter1_monster
+  1: chapter2_monster
+  2: chapter3_monster
+
+

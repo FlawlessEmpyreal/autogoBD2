@@ -13,9 +13,10 @@ var (
 	// ====================Dir======================
 	imgRoot = "/mnt/shared/Pictures/img"
 
-	YoloParamPath = path.Join(imgRoot, "misc/chapter1_best.param") //yolo param文件路径
-	YoloBinPath   = path.Join(imgRoot, "misc/chapter1_best.bin")   //yolo bin文件路径
-
+	YoloParamPath_Main   = path.Join(imgRoot, "misc/chapter1_best.param") //yolo param文件路径
+	YoloBinPath_Main     = path.Join(imgRoot, "misc/chapter1_best.bin")   //yolo bin文件路径
+	YoloParamPath_Branch = path.Join(imgRoot, "misc/")
+	YoloBinPath_Branch   = path.Join(imgRoot, "misc/")
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//=====================labels===============
 
@@ -28,6 +29,10 @@ var (
 	Subdue     bool = true  //压制
 	Stealth    bool = false //隐身
 
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+	//================reg para==============
+	//是否注册信息
+	RegCh1 = true
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//================astar para==============
 	MaxDist     = 20.0 //路径简化后,路径之间的最大像素距离
