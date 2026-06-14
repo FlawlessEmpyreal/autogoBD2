@@ -15,5 +15,5 @@ var MiscPoint = pointList{
 	BranchChapterChoose: image.Point{450, 558},
 	BackButton1:         image.Point{136, 40},
 	BackButton2:         image.Point{105, 40},
-	BackButton:          image.Point{120, 40},
+	BackButton:          image.Point{165, 40},
 }

@@ -1,0 +1,25 @@
+path: ../datasets/dm_main
+train:
+  - images
+val:
+  - images
+test:
+
+names:
+  0: chapter1_monster
+  1: chapter2_monster
+  2: chapter3_monster
+  3: chapter4_monster
+  4: chapter5_monster
+  5: chapter6_monster
+  6: chapter7_monster
+  7: chapter8_monster
+  8: chapter9_monster
+  9: chapter10_monster
+  10: chapter11_monster
+  11: chapter12_monster
+  12: chapter13_monster
+  13: chapter14_monster
+  14: chapter15_monster
+  15: chapter16_monster
+  16: chapter17_monster

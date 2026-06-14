@@ -11,16 +11,19 @@ import (
 var (
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	// ====================Dir======================
-	imgRoot = "/mnt/shared/Pictures/img"
+	ImgRoot = "/mnt/shared/Pictures/img"
 
-	YoloParamPath_Main   = path.Join(imgRoot, "misc/chapter1_best.param") //yolo param文件路径
-	YoloBinPath_Main     = path.Join(imgRoot, "misc/chapter1_best.bin")   //yolo bin文件路径
-	YoloParamPath_Branch = path.Join(imgRoot, "misc/")
-	YoloBinPath_Branch   = path.Join(imgRoot, "misc/")
+	YoloParamPath_Main   = path.Join(ImgRoot, "misc/best_main_1to17.param") //yolo param文件路径
+	YoloBinPath_Main     = path.Join(ImgRoot, "misc/best_main_1to17.bin")   //yolo bin文件路径
+	YoloParamPath_Branch = path.Join(ImgRoot, "misc/")
+	YoloBinPath_Branch   = path.Join(ImgRoot, "misc/")
+
+	ChapterSelectInterfaceImg_path = path.Join(ImgRoot, "misc/chapterSelectDetect.png")
+	BattleInterfaceDetect_path     = path.Join(ImgRoot, "misc/BattleInterfaceDetect.jpg")
+	BackButton_path                = path.Join(ImgRoot, "misc/backButton.png")
+	EscapeImg_path                 = path.Join(ImgRoot, "misc/escapeDetect.png")
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//=====================labels===============
-
-	Yolo_labels = "chapter1_monster"
 
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//===================skill para=============
@@ -31,8 +34,11 @@ var (
 
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//================reg para==============
-	//是否注册信息
+
+	//是否注册章节
 	RegCh1 = true
+	RegCh2 = true
+
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//================astar para==============
 	MaxDist     = 20.0 //路径简化后,路径之间的最大像素距离
@@ -42,6 +48,8 @@ var (
 	PathfindingRetryCount = 15                    //寻路重试次数,超过这个次数 超时计数+1
 	TimeoutCount          = 2                     //超时计数大于这个数返回超时
 	NavigationInterval    = 16 * time.Millisecond //寻路间隔,默认一秒六十次
+
+	IsolateRadius = 2
 )
 
 //=================================================================================
@@ -101,6 +109,8 @@ type InterfaceJudgment struct { // 界面识别配置
 	If_TpRightButton    SceneConfig    // 地图中选择地图的右按钮找色
 	If_Backbutton       [2]SceneConfig // 判断是否有返回按钮，返回按钮有两种   判断时使用MyOpencv.If_Backbutton
 	If_BattleFieldRole  SceneConfig    // 判断是否在战场角色设置界面
+	If_Pause            SceneConfig    //判断是否在战斗暂停页面
+	If_escape           SceneConfig
 }
 
 type RecoveryAction int

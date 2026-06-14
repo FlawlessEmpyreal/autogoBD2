@@ -1,27 +1,10 @@
-path: ../datasets/main
-train:
-  - images
-val:
-  - images
-test:
-
-names:
-  0: chapter1_monster
-  1: chapter2_monster
-  2: chapter3_monster
-  3: chapter4_monster
-  4: chapter5_monster
-  5: chapter6_monster
-  6: chapter7_monster
-  7: chapter8_monster
-  8: chapter9_monster
-  9: chapter10_monster
-  10: chapter11_monster
-  11: chapter12_monster
-  12: chapter13_monster
-  13: chapter14_monster
-  14: chapter15_monster
-  15: chapter16_monster
-  16: chapter17_monster
-
-
+path: F:/GoProject/file_bak/datasets/main
+train: images/train
+val: images/val
+nc: 17
+names: ['chapter1_monster', 'chapter2_monster', 'chapter3_monster',
+        'chapter4_monster', 'chapter5_monster', 'chapter6_monster',
+        'chapter7_monster', 'chapter8_monster', 'chapter9_monster',
+        'chapter10_monster', 'chapter11_monster', 'chapter12_monster',
+        'chapter13_monster', 'chapter14_monster', 'chapter15_monster',
+        'chapter16_monster', 'chapter17_monster']

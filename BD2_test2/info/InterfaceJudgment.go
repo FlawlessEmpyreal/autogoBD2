@@ -50,6 +50,10 @@ var IF = InterfaceJudgment{
 			{X: 299, Y: 400, Color: "000000"},
 			{X: 383, Y: 163, Color: "000000"},
 			{X: 63, Y: 42, Color: "000000"},
+			{X: 428, Y: 438, Color: "000000"},
+			{X: 1279, Y: 719, Color: "000000"},
+			{X: 770, Y: 342, Color: "000000"},
+			{X: 1256, Y: 27, Color: "000000"},
 		},
 	},
 	If_TpLeftButton: SceneConfig{
@@ -88,6 +92,21 @@ var IF = InterfaceJudgment{
 			{X: 879, Y: 581, Color: "dedad6"},
 			{X: 948, Y: 578, Color: "dedad6"},
 			{X: 1094, Y: 579, Color: "dedad6"},
+		},
+	},
+	If_Pause: SceneConfig{
+		ColorsCmp: []StructColorCmp{
+			{X: 464, Y: 650, Color: "dedad6"},
+			{X: 789, Y: 671, Color: "dedad6"},
+			{X: 392, Y: 649, Color: "dedad6"},
+		},
+	},
+	If_escape: SceneConfig{
+		ColorsCmp: []StructColorCmp{
+			{X: 495, Y: 435, Color: "dedad6"},
+			{X: 626, Y: 436, Color: "dedad6"},
+			{X: 654, Y: 436, Color: "dedad6"},
+			{X: 785, Y: 436, Color: "dedad6"},
 		},
 	},
 }

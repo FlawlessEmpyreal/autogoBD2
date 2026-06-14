@@ -4,12 +4,14 @@ import (
 	"app/MyOpenCV"
 	"app/aStar"
 	"app/info"
+	"context"
 	"errors"
 	"fmt"
 	"image"
 	"math"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Dasongzi1366/AutoGo/motion"
@@ -142,7 +144,8 @@ func Chapter_Tp(
 			return info.RetryStage, fmt.Errorf("未找到要传送的目标地图,重试本阶段")
 		}
 	}
-	time.Sleep(2 * time.Second) //成功传送后等五秒要不容易直接跳步骤
+	MyOpenCV.WaitLoading(20)
+	time.Sleep(2 * time.Second)
 	println("进入地图")
 	return info.StageDone, nil
 }
@@ -154,6 +157,10 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		println("章节图片读取错误,请检查路径权限或文件是否存在")
 		os.Exit(0)
 	}
+
+	motion.Click(640, 360, 0, 0) //刷新运动状态
+	time.Sleep(500 * time.Millisecond)
+	motion.Click(640, 360, 0, 0)
 
 	for i := 0; i < 3; i++ { //进入章节选择
 		motion.Click(553, 652, 0, 0)
@@ -255,6 +262,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		}
 		time.Sleep(1 * time.Second)
 	}
+	time.Sleep(2000 * time.Millisecond)
 
 	//检测是否进入章节有bug
 	//for i := 0; i < 3; i++ {
@@ -355,15 +363,40 @@ func ChapterRun(
 	//	}
 	//}(ctx)
 
+	var ctx2 context.Context
+	var cancel2 context.CancelFunc
+	var waitSkill func()
+	var stopSkill func()
+	var startSkill func()
+
+	stopSkill = func() {
+		if cancel2 != nil {
+			cancel2()
+			waitSkill()
+			cancel2 = nil
+			//fmt.Println("SkillLoop已停止")
+		}
+	}
+
+	startSkill = func() {
+		ctx2, cancel2 = context.WithCancel(context.Background())
+		waitSkill = SkillLoop(ctx2)
+		//fmt.Println("SkillLoop已重启")
+	}
+
+	defer stopSkill()
+
 	time.Sleep(1 * time.Second)
-	var i int
-	for i = 0; i < len(MonsterLocation); i++ {
+	startSkill()
+
+	for i := 0; i < len(MonsterLocation); i++ {
 		if info.STATE_Done != aStar.NavigateTo(bigMapPath, astarMap,
 			aStar.Point{X: MonsterLocation[i].X, Y: MonsterLocation[i].Y},
 			func() aStar.Point {
 				x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 				return aStar.Point{X: x, Y: y}
 			},
+			stopSkill, startSkill,
 		) {
 			return info.RetryStage, fmt.Errorf("第%d个怪物寻路失败,重试本阶段", i)
 		}
@@ -461,4 +494,80 @@ func ChapterRun(
 
 	time.Sleep(1 * time.Second)
 	return info.StageDone, nil
+}
+
+func interruptibleSleep(ctx context.Context, d time.Duration) {
+	t := time.NewTimer(d)
+	defer t.Stop() // 确保定时器资源被回收
+	select {
+	case <-t.C:
+		// 正常等待
+	case <-ctx.Done():
+		return
+		// 收到取消信号，立即返回
+	}
+}
+
+// safeExecute 在执行实际操作前检查上下文是否已被取消
+func safeExecute(ctx context.Context, action func()) bool {
+	select {
+	case <-ctx.Done():
+
+		return false // 已取消，不执行
+	default:
+		action()
+		return true // 未取消，执行动作
+	}
+}
+
+// 启动技能循环线程
+func SkillLoop(ctx context.Context) func() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(ctx context.Context) {
+		defer func() {
+			//fmt.Println("SkillLoop goroutine 真正退出")
+			wg.Done()
+		}()
+		for {
+			select {
+			case <-ctx.Done():
+				//fmt.Println("SkillLoop 收到取消信号")
+				//fmt.Println("收到Context信号，释放技能的协程退出")
+				return
+			default:
+				if info.Accelerate {
+					interruptibleSleep(ctx, 100*time.Millisecond)
+					if !safeExecute(ctx, func() {
+						motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0)
+					}) {
+						return
+					}
+					interruptibleSleep(ctx, 1*time.Second)
+				}
+				if info.Subdue {
+					if !safeExecute(ctx, func() {
+						motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0)
+					}) {
+						return
+					}
+					interruptibleSleep(ctx, 1*time.Second)
+				}
+				if info.Stealth {
+					if !safeExecute(ctx, func() {
+						motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0)
+					}) {
+						return
+					}
+					interruptibleSleep(ctx, 1*time.Second)
+				}
+			}
+		}
+	}(ctx)
+	// 返回等待函数
+	return func() {
+		//fmt.Println("开始等待SkillLoop退出")
+		wg.Wait()
+		//fmt.Println("SkillLoop已退出")
+	}
 }

@@ -3,10 +3,12 @@ package aStar
 import (
 	"app/MyOpenCV"
 	"app/info"
+	"app/info/info_chapter"
 	"app/myMotion"
 	"container/heap"
 	"context"
 	"fmt"
+	"image"
 	"math"
 	"path/filepath"
 	"time"
@@ -130,6 +132,13 @@ func LoadObstacleMap(imgPath string) (*AStarMap, error) {
 	}
 	defer img.Close()
 
+	// 开运算去除孤立白点噪声
+	cleaned := opencv.NewMat()
+	defer cleaned.Close()
+	kernel := opencv.GetStructuringElement(opencv.MorphRect, image.Point{X: 3, Y: 3})
+	defer kernel.Close()
+	opencv.MorphologyEx(img, &cleaned, opencv.MorphOpen, kernel)
+
 	rows := img.Rows()
 	cols := img.Cols()
 
@@ -229,42 +238,6 @@ func calcH(x, y, ex, ey int) int {
 	return (abs(ex-x) + abs(ey-y)) * STEP_VAL
 }
 
-// findNearestPassable 起点在障碍物时BFS找最近可通行点
-func (m *AStarMap) findNearestPassable(x, y int) (int, int, bool) {
-	type pos struct{ x, y int }
-	visited := make([][]bool, m.rows)
-	for i := range visited {
-		visited[i] = make([]bool, m.cols)
-	}
-
-	queue := []pos{{x, y}}
-	visited[y][x] = true
-
-	dx4 := []int{1, -1, 0, 0}
-	dy4 := []int{0, 0, 1, -1}
-
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-
-		if !m.obstacle[cur.y][cur.x] {
-			return cur.x, cur.y, true
-		}
-
-		for d := 0; d < 4; d++ {
-			nx, ny := cur.x+dx4[d], cur.y+dy4[d]
-			if nx < 0 || ny < 0 || nx >= m.cols || ny >= m.rows {
-				continue
-			}
-			if !visited[ny][nx] {
-				visited[ny][nx] = true
-				queue = append(queue, pos{nx, ny})
-			}
-		}
-	}
-	return x, y, false
-}
-
 // 八方向移动
 var dirs = []Point{
 	{1, 0}, {-1, 0}, {0, 1}, {0, -1}, // 上下左右
@@ -282,19 +255,146 @@ var dirs = []Point{
 //	return float64(dy) + 0.414*float64(dx)
 //}
 
-func AStar(m *AStarMap, start, end Point) []Point {
-	// 起点在障碍物时找最近可通行点
-	if m.obstacle[start.Y][start.X] {
-		nx, ny, ok := m.findNearestPassable(start.X, start.Y)
-		if !ok {
-			return nil
-		}
-		start = Point{nx, ny}
+// 先用BFS标记终点所在的连通区域
+func (m *AStarMap) getConnectedRegion(x, y int) map[[2]int]bool {
+	region := make(map[[2]int]bool)
+	if m.obstacle[y][x] {
+		return region
 	}
 
-	if m.obstacle[end.Y][end.X] {
+	type pos struct{ x, y int }
+	queue := []pos{{x, y}}
+	region[[2]int{x, y}] = true
+
+	dx4 := []int{1, -1, 0, 0}
+	dy4 := []int{0, 0, 1, -1}
+
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for d := 0; d < 4; d++ {
+			nx, ny := cur.x+dx4[d], cur.y+dy4[d]
+			if nx < 0 || ny < 0 || nx >= m.cols || ny >= m.rows {
+				continue
+			}
+			if !m.obstacle[ny][nx] && !region[[2]int{nx, ny}] {
+				region[[2]int{nx, ny}] = true
+				queue = append(queue, pos{nx, ny})
+			}
+		}
+	}
+	return region
+}
+
+// 找到起点到终点连通区域最近点并开凿通路
+func (m *AStarMap) carvePathToRegion(sx, sy int, region map[[2]int]bool) bool {
+	type pos struct{ x, y int }
+	visited := make([][]bool, m.rows)
+	for i := range visited {
+		visited[i] = make([]bool, m.cols)
+	}
+
+	queue := []pos{{sx, sy}}
+	visited[sy][sx] = true
+
+	dx4 := []int{1, -1, 0, 0}
+	dy4 := []int{0, 0, 1, -1}
+
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+
+		if region[[2]int{cur.x, cur.y}] {
+			// 用L形路径开凿：先水平再垂直
+			// 第一段：水平从sx到cur.x
+			x0 := sx
+			stepX := 1
+			if cur.x < sx {
+				stepX = -1
+			}
+			for x0 != cur.x {
+				m.obstacle[sy][x0] = false
+				x0 += stepX
+			}
+			m.obstacle[sy][cur.x] = false
+
+			// 第二段：垂直从sy到cur.y
+			y0 := sy
+			stepY := 1
+			if cur.y < sy {
+				stepY = -1
+			}
+			for y0 != cur.y {
+				m.obstacle[y0][cur.x] = false
+				y0 += stepY
+			}
+			m.obstacle[cur.y][cur.x] = false
+
+			//fmt.Printf("carvePathToRegion L形: 从(%d,%d)开凿到(%d,%d)\n", sx, sy, cur.x, cur.y)
+			return true
+		}
+
+		for d := 0; d < 4; d++ {
+			nx, ny := cur.x+dx4[d], cur.y+dy4[d]
+			if nx < 0 || ny < 0 || nx >= m.cols || ny >= m.rows {
+				continue
+			}
+			if !visited[ny][nx] {
+				visited[ny][nx] = true
+				queue = append(queue, pos{nx, ny})
+			}
+		}
+	}
+	return false
+}
+
+func AStar(m *AStarMap, start, end Point) []Point {
+
+	// 边界裁剪
+	if start.X < 0 {
+		start.X = 0
+	}
+	if start.Y < 0 {
+		start.Y = 0
+	}
+	if start.X >= m.cols {
+		start.X = m.cols - 1
+	}
+	if start.Y >= m.rows {
+		start.Y = m.rows - 1
+	}
+	if end.X < 0 {
+		end.X = 0
+	}
+	if end.Y < 0 {
+		end.Y = 0
+	}
+	if end.X >= m.cols {
+		end.X = m.cols - 1
+	}
+	if end.Y >= m.rows {
+		end.Y = m.rows - 1
+	}
+
+	// 先获取终点的连通区域
+	endRegion := m.getConnectedRegion(end.X, end.Y)
+	if len(endRegion) == 0 {
+		fmt.Println("终点在障碍物上且无法修正")
 		return nil
 	}
+
+	// 起点不在终点连通区域时开凿通路
+	if !endRegion[[2]int{start.X, start.Y}] {
+		fmt.Println("起点不在终点连通区域，开凿通路")
+		if !m.carvePathToRegion(start.X, start.Y, endRegion) {
+			fmt.Println("无法开凿通路")
+			return nil
+		}
+	}
+
+	//fmt.Printf("修正后 start=(%d,%d) end=(%d,%d) startObstacle=%v endObstacle=%v\n",
+	//	start.X, start.Y, end.X, end.Y,
+	//	m.obstacle[start.Y][start.X], m.obstacle[end.Y][end.X])
 
 	nodes := make([][]*Node, m.rows)
 	for i := range nodes {
@@ -314,32 +414,41 @@ func AStar(m *AStarMap, start, end Point) []Point {
 	startNode.InOpen = true
 
 	pq := &PriorityQueue{startNode}
+	//fmt.Printf("初始化pq, len=%d\n", pq.Len()) // 加这行
 	heap.Init(pq)
+	//fmt.Printf("Init后pq, len=%d\n", pq.Len()) // 加这行
 
+	loopCount := 0
 	for pq.Len() > 0 {
+		loopCount++
 		cur := heap.Pop(pq).(*Node)
 		cur.InOpen = false
 		cur.InClosed = true
 
 		if cur.X == end.X && cur.Y == end.Y {
+
+			//fmt.Printf("找到路径,循环次数=%d\n", loopCount)
 			return buildPath(cur)
 		}
 
 		for _, d := range dirs {
 			nx, ny := cur.X+d.X, cur.Y+d.Y
 			if nx < 0 || ny < 0 || nx >= m.cols || ny >= m.rows {
+				//fmt.Printf("邻居(%d,%d)越界\n", nx, ny)
 				continue
 			}
 			if m.obstacle[ny][nx] {
+				//fmt.Printf("邻居(%d,%d)是障碍\n", nx, ny)
 				continue
 			}
 			// 斜角移动检查两侧
 			if d.X != 0 && d.Y != 0 {
 				if m.obstacle[cur.Y][nx] || m.obstacle[ny][cur.X] {
+					//fmt.Printf("邻居(%d,%d)斜角被切角阻挡\n", nx, ny)
 					continue
 				}
 			}
-
+			//fmt.Printf("邻居(%d,%d)可通行,加入队列\n", nx, ny)
 			neighbor := getNode(nx, ny)
 			if neighbor.InClosed {
 				continue
@@ -362,6 +471,7 @@ func AStar(m *AStarMap, start, end Point) []Point {
 			}
 		}
 	}
+	fmt.Printf("未找到路径,循环次数=%d\n", loopCount)
 	return nil
 }
 
@@ -508,6 +618,7 @@ func interpolatePath(path []Point, maxDist float64) []Point {
 // 完整寻路接口
 func FindPath(m *AStarMap, start, end Point) []Point {
 	raw := AStar(m, start, end)
+	//fmt.Printf("path=%v, len=%d, nil=%v\n", raw, len(raw), raw == nil)
 	if raw == nil {
 		return nil
 	}
@@ -528,14 +639,14 @@ func FindPath(m *AStarMap, start, end Point) []Point {
 	// 确保相邻点间距不超过20像素
 	interpolated := interpolatePath(centered, info.MaxDist)
 	// 验证插值结果
-	for i := 1; i < len(interpolated); i++ {
-		dx := interpolated[i].X - interpolated[i-1].X
-		dy := interpolated[i].Y - interpolated[i-1].Y
-		dist := math.Sqrt(float64(dx*dx + dy*dy))
-		if dist > 20 {
-			fmt.Printf("插值后仍有超距: 点%d→点%d 距离=%.1f\n", i-1, i, dist)
-		}
-	}
+	//for i := 1; i < len(interpolated); i++ {
+	//	dx := interpolated[i].X - interpolated[i-1].X
+	//	dy := interpolated[i].Y - interpolated[i-1].Y
+	//	dist := math.Sqrt(float64(dx*dx + dy*dy))
+	//	if dist > 20 {
+	//		fmt.Printf("插值后仍有超距: 点%d→点%d 距离=%.1f\n", i-1, i, dist)
+	//	}
+	//}
 
 	return interpolated
 }
@@ -588,8 +699,8 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 		for {
 			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
 			if x == -1 && y == -1 {
-				println("==========循环获取坐标:", x, y)
-				println("==========循环获取坐标出错")
+				//println("==========循环获取坐标:", x, y)
+				//println("==========循环获取坐标出错")
 				fmt.Println("地图丢失，终止所有操作")
 				cancelFunc() // 取消所有操作
 				return
@@ -597,68 +708,6 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}()
-}
-
-func interruptibleSleep(ctx context.Context, d time.Duration) {
-	t := time.NewTimer(d)
-	defer t.Stop() // 确保定时器资源被回收
-	select {
-	case <-t.C:
-		// 正常等待
-	case <-ctx.Done():
-		return
-		// 收到取消信号，立即返回
-	}
-}
-
-// safeExecute 在执行实际操作前检查上下文是否已被取消
-func safeExecute(ctx context.Context, action func()) bool {
-	select {
-	case <-ctx.Done():
-
-		return false // 已取消，不执行
-	default:
-		action()
-		return true // 未取消，执行动作
-	}
-}
-
-// 启动技能循环线程
-func SkillLoop(ctx context.Context) {
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done(): // 监听到上下文被取消，主动退出
-				fmt.Println("收到Context信号，释放技能的协程退出")
-				return
-			default:
-				if info.Accelerate {
-					if !safeExecute(ctx, func() {
-						motion.Click(info.BP.Accelerate.X, info.BP.Accelerate.Y, 2, 0)
-					}) {
-						return // 如果在点击前被取消，立刻退出整个循环
-					}
-					interruptibleSleep(ctx, 1*time.Second)
-				}
-				if info.Subdue {
-					if !safeExecute(ctx, func() {
-						motion.Click(info.BP.Subdue.X, info.BP.Subdue.Y, 2, 0)
-					}) {
-						return
-					}
-					interruptibleSleep(ctx, 1*time.Second)
-				}
-				if info.Stealth {
-					if !safeExecute(ctx, func() {
-						motion.Click(info.BP.Stealth.X, info.BP.Stealth.Y, 2, 0)
-					}) {
-						return
-					}
-					interruptibleSleep(ctx, 1*time.Second)
-				}
-			}
-		}
-	}(ctx)
 }
 
 func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) info.WayFindState {
@@ -687,8 +736,8 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) i
 			dy := waypoint.Y - cur.Y
 			dist := math.Sqrt(float64(dx*dx + dy*dy))
 
-			fmt.Printf("tryCount=%d cur=(%d,%d) waypoint=(%d,%d) dist=%.1f\n",
-				tryCount, cur.X, cur.Y, waypoint.X, waypoint.Y, dist)
+			//fmt.Printf("tryCount=%d cur=(%d,%d) waypoint=(%d,%d) dist=%.1f\n",
+			//	tryCount, cur.X, cur.Y, waypoint.X, waypoint.Y, dist)
 
 			if dist < info.SuccessDist {
 				break
@@ -720,30 +769,35 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) i
 
 // 封装寻路+异常处理，支持重试
 func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
-	getCurrentPos func() Point) info.WayFindState {
-
+	getCurrentPos func() Point,
+	stopSkill func(),
+	startSkill func(),
+) info.WayFindState {
+	trycount := 0
 	for {
-		// 每次寻路前创建新的context
 		ctx, cancel := context.WithCancel(context.Background())
-
 		// 启动地图监测
 		StartMapMonitor(bigMapPath, cancel)
 
-		ctx2, cancel2 := context.WithCancel(context.Background())
-		SkillLoop(ctx2)
-		defer cancel2()
-
 		// 获取当前坐标
 		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
-		println("==========获取当前坐标:", x, y)
+		//println("==========获取当前坐标:", x, y)
 		if x == -1 && y == -1 {
+			println("\n==========获取当前坐标出错=========\n")
 			cancel()
-			cancel2()
-			println("==========获取当前坐标出错")
+
+			stopSkill()                        // 停止
 			state := handleLossMap(bigMapPath) // 异常处理
+			startSkill()                       // 重启
+
+			trycount++
+			if trycount > 5 {
+				state = info.STATE_Fixed_Failed
+			}
 			if state != info.STATE_Fixed_succes {
 				return state
 			}
+
 			continue // 处理完后重试
 		}
 
@@ -752,8 +806,14 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 		//path := AStar(astarMap, start, end)
 		path := FindPath(astarMap, start, end)
 		if path == nil || len(path) == 0 {
-			fmt.Println("路径为空，等待后重试")
+			fmt.Printf("路径为空，等待后重试,path长度:%d\n", len(path))
 			time.Sleep(500 * time.Millisecond)
+			trycount++
+			if trycount > 5 {
+				cancel()
+				return info.STATE_CDT_Useless
+			}
+			cancel()
 			continue // 重新循环重新寻路
 		}
 
@@ -766,11 +826,12 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 
 		case info.STATE_Loss_Map:
 			fmt.Println("地图丢失，进入异常处理")
-			cancel2()
-			state := handleLossMap(bigMapPath)
+			stopSkill()
+			state = handleLossMap(bigMapPath)
 			if state != info.STATE_Fixed_succes {
 				return state
 			}
+			startSkill() // 重启
 			// 异常处理完后继续循环重试
 
 		case info.STATE_Movement_timeout:
@@ -796,6 +857,7 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 // 地图丢失的异常处理
 func handleLossMap(bigMapPath string) info.WayFindState {
 	fmt.Println("执行异常处理")
+
 	time.Sleep(2 * time.Second)
 
 	if MyOpenCV.ListColorsCmp(info.IF.IF_TpInterface[:], 0.8) { //看看是不是进到传送界面
@@ -811,43 +873,100 @@ func handleLossMap(bigMapPath string) info.WayFindState {
 		}
 	}
 
-	inBattle := MyOpenCV.If_BattleInterface(0.85)
-	if !inBattle { // 没检测出来战斗界面, 有可能是图片识别错误也可能是网络延迟,在地图上随便点两下
-		// 生成一个随机角度
-		x1, y1, x2, y2 := myMotion.RandomPoint()
-
-		for i := 0; i < 2; i++ {
-			if i == 0 {
-				motion.Click(x1, y1, 0, 0)
-			} else {
-				motion.Click(x2, y2, 0, 0)
+	for i := 0; i < 3; i++ {
+		inBattle := MyOpenCV.If_BattleInterface(0.85)
+		if !inBattle { // 没检测出来战斗界面, 有可能是图片识别错误也可能是网络延迟,随便点两下
+			// 生成一个随机角度
+			fmt.Printf("未检测到战斗界面")
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //先判断是不是已经在跑图界面
+				return info.STATE_Fixed_succes
 			}
-			time.Sleep(1000 * time.Millisecond)
 
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+			if MyOpenCV.ListColorsCmp(info.IF.If_Backbutton[:], 0.7) { //如果有返回按钮
+				motion.Click(info.MiscPoint.BackButton.X, info.MiscPoint.BackButton.Y, 0, 0)
+				time.Sleep(1500 * time.Millisecond)
+				if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+					return info.STATE_Fixed_succes
+				}
+			}
+
+			if MyOpenCV.ColorCmp(info.IF.If_BattleFieldRole.ColorsCmp, 0.8) {
+				motion.Click(644, 652, 0, 0) //点战场角色界面按钮,这里其实是退出战场角色界面
+				time.Sleep(1500 * time.Millisecond)
+				if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+					return info.STATE_Fixed_succes
+				}
+			}
+
+			//如果还不在那可能是打开钻石金币弹窗了点一下战场界面按钮
+			motion.Click(644, 652, 0, 0) //点战场角色界面按钮,关闭金币弹窗
+			time.Sleep(1500 * time.Millisecond)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return info.STATE_Fixed_succes
+			}
+
+			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6) //二次检测
 			if !(x == -1 && y == -1) {
+				fmt.Println("成功返回跑图界面")
 				return info.STATE_Fixed_succes
 			}
-		}
-	} else {
-		//进入战斗界面退出战斗界面
-		for i := 0; i < 4; i++ {
-			inBattle = MyOpenCV.If_BattleInterface(0.85)
-			if inBattle { //退出战斗
-				println("战斗界面,退出战斗")
-				motion.Click(1178, 42, 0, 0)
-				time.Sleep(1 * time.Second)
-				motion.Click(510, 660, 0, 0)
-				time.Sleep(1 * time.Second)
-				motion.Click(721, 433, 0, 0)
-			} else if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //没返回到跑图界面
-				return info.STATE_Fixed_succes
+		} else {
+			//进入战斗界面退出战斗界面
+			for i := 0; i < 2; i++ {
+				inBattle = MyOpenCV.If_BattleInterface(0.85)
+				time.Sleep(2000 * time.Millisecond)
+				if inBattle { //退出战斗
+					println("检测到战斗界面,退出战斗")
+					for i := 0; i < 2; i++ {
+						MyOpenCV.If_LoadingInterface(10)
+						if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+							return info.STATE_Fixed_succes
+						}
+						motion.Click(1178, 42, 0, 0)
+						if MyOpenCV.ColorCmp(info.IF.If_Pause.ColorsCmp, 0.8) {
+							time.Sleep(1 * time.Second)
+							motion.Click(510, 660, 0, 0)
+							time.Sleep(1 * time.Second)
+							motion.Click(721, 433, 0, 0)
+						}
+
+						MyOpenCV.If_LoadingInterface(10)
+						time.Sleep(1 * time.Second)
+
+						if MyOpenCV.ColorCmp(info.IF.If_Pause.ColorsCmp, 0.8) { //如果在暂停页面
+							motion.Click(510, 660, 0, 0)
+							time.Sleep(1 * time.Second)
+							motion.Click(721, 433, 0, 0)
+							time.Sleep(1500 * time.Millisecond)
+							MyOpenCV.If_LoadingInterface(10)
+							if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+								return info.STATE_Fixed_succes
+							}
+						}
+						if MyOpenCV.If_escape() { //如果在逃跑页面
+							motion.Click(721, 433, 0, 0)
+							time.Sleep(1500 * time.Millisecond)
+							MyOpenCV.If_LoadingInterface(10)
+							if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+								return info.STATE_Fixed_succes
+							}
+						}
+
+						time.Sleep(1000 * time.Millisecond)
+					}
+				}
+				if i == 1 { //没返回到跑图界面
+					return info.STATE_Fixed_Failed
+				}
+				time.Sleep(2 * time.Second)
 			}
-			if i == 3 { //没返回到跑图界面
-				return info.STATE_Fixed_Failed
-			}
-			time.Sleep(2 * time.Second)
 		}
+		time.Sleep(2 * time.Second)
+	}
+
+	if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //返回到跑图界面
+		fmt.Println("成功返回跑图界面")
+		return info.STATE_Fixed_succes
 	}
 
 	return info.STATE_Fixed_Failed
@@ -937,4 +1056,8 @@ func YoloFind(yoloPtr *yolo.Yolo, bigMapPath string) info.WayFindState {
 		time.Sleep(1 * time.Second)
 	}
 	return info.STATE_Done
+}
+
+func Handle() { //测试自动纠错
+	handleLossMap(info_chapter.Ch1.ChapterImg_path)
 }

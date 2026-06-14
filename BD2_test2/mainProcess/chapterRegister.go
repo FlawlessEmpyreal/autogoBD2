@@ -4,6 +4,7 @@ package mainProcess
 
 import (
 	"app/info"
+	"app/info/info_chapter"
 )
 
 func RegisterChapters(Ctrl *Controller) {
@@ -11,7 +12,11 @@ func RegisterChapters(Ctrl *Controller) {
 	if info.RegCh1 {
 		RegChapter1(Ctrl)
 	}
-	// -------- Chapter 1 --------
+	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+	// -------- Chapter 2 --------
+	if info.RegCh2 {
+		RegChapter2(Ctrl)
+	}
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 }
 
@@ -26,18 +31,18 @@ func RegChapter1(Ctrl *Controller) {
 				type_: "FindChapter",
 				Run: func() (info.RecoveryAction, error) {
 					return FindChapter(
-						info.Ch1.ChapterImg_path,
-						info.Ch1.Type_,
+						info_chapter.Ch1.ChapterImg_path,
+						info_chapter.Ch1.Type_,
 					)
 				},
 			},
 			{
-				Name:  "Tp_1",
+				Name:  "Tp_Map1",
 				type_: "Tp",
 				Run: func() (info.RecoveryAction, error) {
 					return Chapter_Tp(
-						info.Ch1.MapConfig[0].MapFind.MapColorsCmp,
-						info.Ch1.MapConfig[0].TpPoint,
+						info_chapter.Ch1.MapConfig[0].MapFind.MapColorsCmp,
+						info_chapter.Ch1.MapConfig[0].TpPoint,
 					)
 				},
 			},
@@ -46,21 +51,21 @@ func RegChapter1(Ctrl *Controller) {
 				type_: "RunChapter",
 				Run: func() (info.RecoveryAction, error) {
 					return ChapterRun(
-						info.Ch1.MapConfig[0].BigMapPath,
-						info.Ch1.MapConfig[0].Bin_mapPath,
-						info.Ch1.MapConfig[0].MonsterLocation,
-						info.Ch1.YoloLable,
+						info_chapter.Ch1.MapConfig[0].BigMapPath,
+						info_chapter.Ch1.MapConfig[0].Bin_mapPath,
+						info_chapter.Ch1.MapConfig[0].MonsterLocation,
+						info_chapter.Ch1.YoloLable,
 						"main",
 					)
 				},
 			},
 			{
-				Name:  "Tp_2",
+				Name:  "Tp_Map2",
 				type_: "Tp",
 				Run: func() (info.RecoveryAction, error) {
 					return Chapter_Tp(
-						info.Ch1.MapConfig[1].MapFind.MapColorsCmp,
-						info.Ch1.MapConfig[1].TpPoint,
+						info_chapter.Ch1.MapConfig[1].MapFind.MapColorsCmp,
+						info_chapter.Ch1.MapConfig[1].TpPoint,
 					)
 				},
 			},
@@ -69,10 +74,76 @@ func RegChapter1(Ctrl *Controller) {
 				type_: "RunChapter",
 				Run: func() (info.RecoveryAction, error) {
 					return ChapterRun(
-						info.Ch1.MapConfig[1].BigMapPath,
-						info.Ch1.MapConfig[1].Bin_mapPath,
-						info.Ch1.MapConfig[1].MonsterLocation,
-						info.Ch1.YoloLable,
+						info_chapter.Ch1.MapConfig[1].BigMapPath,
+						info_chapter.Ch1.MapConfig[1].Bin_mapPath,
+						info_chapter.Ch1.MapConfig[1].MonsterLocation,
+						info_chapter.Ch1.YoloLable,
+						"main",
+					)
+				},
+			},
+		},
+	})
+}
+
+func RegChapter2(Ctrl *Controller) {
+	Ctrl.Register(&ChapterConfig{
+		Name:       "chapter2",
+		Enabled:    true,
+		MaxRetries: 3,
+		Stages: []Stage{
+			{
+				Name:  "FindChapter",
+				type_: "FindChapter",
+				Run: func() (info.RecoveryAction, error) {
+					return FindChapter(
+						info_chapter.Ch2.ChapterImg_path,
+						info_chapter.Ch2.Type_,
+					)
+				},
+			},
+			{
+				Name:  "Tp_Map1",
+				type_: "Tp",
+				Run: func() (info.RecoveryAction, error) {
+					return Chapter_Tp(
+						info_chapter.Ch2.MapConfig[0].MapFind.MapColorsCmp,
+						info_chapter.Ch2.MapConfig[0].TpPoint,
+					)
+				},
+			},
+			{
+				Name:  "RunChapter2_1",
+				type_: "RunChapter",
+				Run: func() (info.RecoveryAction, error) {
+					return ChapterRun(
+						info_chapter.Ch2.MapConfig[0].BigMapPath,
+						info_chapter.Ch2.MapConfig[0].Bin_mapPath,
+						info_chapter.Ch2.MapConfig[0].MonsterLocation,
+						info_chapter.Ch2.YoloLable,
+						"main",
+					)
+				},
+			},
+			{
+				Name:  "Tp_Map2",
+				type_: "Tp",
+				Run: func() (info.RecoveryAction, error) {
+					return Chapter_Tp(
+						info_chapter.Ch2.MapConfig[1].MapFind.MapColorsCmp,
+						info_chapter.Ch2.MapConfig[1].TpPoint,
+					)
+				},
+			},
+			{
+				Name:  "RunChapter2_2",
+				type_: "RunChapter",
+				Run: func() (info.RecoveryAction, error) {
+					return ChapterRun(
+						info_chapter.Ch2.MapConfig[1].BigMapPath,
+						info_chapter.Ch2.MapConfig[1].Bin_mapPath,
+						info_chapter.Ch2.MapConfig[1].MonsterLocation,
+						info_chapter.Ch2.YoloLable,
 						"main",
 					)
 				},

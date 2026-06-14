@@ -7,12 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/Dasongzi1366/AutoGo/images"
 	"github.com/Dasongzi1366/AutoGo/opencv"
 )
-
-var chapterSelectInterfaceImg_path = "/mnt/shared/Pictures/img/misc/chapterSelectDetect.png"
 
 // 把图片变成灰度图片
 func Img2Gery(path string) {
@@ -174,11 +173,10 @@ func ReSizeImg(path string, scaledProportion float64) {
 }
 
 func If_BattleInterface(sim float32) bool {
-	for i := 0; i < len(info.IF.IF_Battle.ColorsCmp); i++ {
-		matched := images.CmpColor(info.IF.IF_Battle.ColorsCmp[i].X, info.IF.IF_Battle.ColorsCmp[i].Y, info.IF.IF_Battle.ColorsCmp[i].Color, sim, 0)
-		if matched == false {
-			return false
-		}
+	img := GetByte(info.BattleInterfaceDetect_path)
+	x, y := opencv.FindImage(1120, 622, 1203, 664, img, false, false, sim, 0)
+	if x == -1 || y == -1 {
+		return false
 	}
 	return true
 }
@@ -194,7 +192,16 @@ func If_LoadingInterface(sim float32) bool {
 }
 
 func If_chapterSelectInterface() *[]byte {
-	return GetByte(chapterSelectInterfaceImg_path)
+	return GetByte(info.ChapterSelectInterfaceImg_path)
+}
+
+func If_BackButton() bool {
+	img := GetByte(info.BackButton_path)
+	x, y := opencv.FindImage(55, 16, 154, 61, img, false, true, 0.7, 0)
+	if x == -1 || y == -1 {
+		return false
+	}
+	return true
 }
 
 //func If_TpInterface(sim float32) bool {
@@ -274,4 +281,22 @@ func ListColorsCmp(scene []info.SceneConfig, sim float32) bool {
 		}
 	}
 	return false
+}
+
+func WaitLoading(waitTime int) {
+	for j := 0; j < waitTime; j++ {
+		if !ColorCmp(info.IF.If_LoadingInterface.ColorsCmp, 0.9) { //没有加载
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func If_escape() bool {
+	img := GetByte(info.EscapeImg_path)
+	x, y := opencv.FindImage(615, 237, 666, 268, img, false, false, 0.7, 0)
+	if x == -1 || y == -1 {
+		return false
+	}
+	return true
 }

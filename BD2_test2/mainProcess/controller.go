@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Dasongzi1366/AutoGo/motion"
+	"github.com/Dasongzi1366/AutoGo/opencv"
 )
 
 // 单个阶段
@@ -90,7 +91,7 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 				retries++
 				if retries > cfg.MaxRetries {
 					log.Printf("  ⛔ %s 超过最大重试次数(%d)，升级为 goToRunMapInterface", stage.Name, cfg.MaxRetries)
-					goToRunMapInterface()
+					GoToRunMapInterface()
 					GoToRunMap++
 					retries = 0
 					// i 不变，主菜单处理完后重试当前阶段
@@ -109,10 +110,15 @@ func (c *Controller) runChapter(cfg *ChapterConfig) error {
 
 			case info.GoToRunMapInterface:
 				log.Printf("  🏠 回跑图界面...")
-				goToRunMapInterface() // 阻塞，直到返回跑图界面
+				GoToRunMapInterface() // 阻塞，直到返回跑图界面
 				log.Printf("已返回跑图界面次数:%d", GoToRunMap)
 				GoToRunMap++
 				log.Printf("  ↩ 返回跑图界面完毕，重试阶段 %s", stage.Name)
+				time.Sleep(500 * time.Millisecond)
+				motion.Click(645, 384, 0, 0) //点一下防止持续跑步
+				time.Sleep(200 * time.Millisecond)
+				motion.Click(645, 384, 0, 0) //点一下防止持续跑步
+				time.Sleep(500 * time.Millisecond)
 				retries = 0
 				// i 不变，重试当前阶段
 
@@ -173,36 +179,106 @@ func (c *Controller) RunByName(names ...string) error {
 	return nil
 }
 
-func goToRunMapInterface() {
+func GoToRunMapInterface() {
+	imgCS := MyOpenCV.If_chapterSelectInterface()
+	x, y := opencv.FindImage(37, 670, 1202, 720, imgCS, false, false, 0.5, 0)
 	for i := 0; i < 3; i++ {
 		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //先判断是不是已经在跑图界面
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
+
+		if MyOpenCV.If_BattleInterface(0.85) { //进战斗退出
+			for i := 0; i < 10; i++ {
+				MyOpenCV.WaitLoading(10)                              //等待十秒加载
+				if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+					return
+				}
+
+				motion.Click(1178, 42, 0, 0)
+				if MyOpenCV.ColorCmp(info.IF.If_Pause.ColorsCmp, 0.7) {
+					time.Sleep(1 * time.Second)
+					motion.Click(510, 660, 0, 0)
+					time.Sleep(1 * time.Second)
+					motion.Click(721, 433, 0, 0)
+				}
+
+				time.Sleep(1000 * time.Millisecond)
+			}
+		}
+
+		if MyOpenCV.ColorCmp(info.IF.If_Pause.ColorsCmp, 0.8) { //如果在暂停页面
+			time.Sleep(1 * time.Second)
+			motion.Click(510, 660, 0, 0)
+			time.Sleep(1 * time.Second)
+			motion.Click(721, 433, 0, 0)
+			time.Sleep(1500 * time.Millisecond)
+			MyOpenCV.If_LoadingInterface(10)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return
+			}
+		}
+
+		if MyOpenCV.If_escape() { //如果在逃跑页面
+			motion.Click(721, 433, 0, 0)
+			time.Sleep(1500 * time.Millisecond)
+			MyOpenCV.If_LoadingInterface(10)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return
+			}
+		}
+
+		//返回按钮找色
 		if MyOpenCV.ListColorsCmp(info.IF.If_Backbutton[:], 0.7) { //如果有返回按钮
 			motion.Click(info.MiscPoint.BackButton.X, info.MiscPoint.BackButton.Y, 0, 0)
+			time.Sleep(1500 * time.Millisecond)
+			MyOpenCV.If_LoadingInterface(10)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return
+			}
 		}
-		time.Sleep(1500 * time.Millisecond)
-		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
-			return
+
+		//返回按钮找图
+		if MyOpenCV.If_BackButton() {
+			motion.Click(info.MiscPoint.BackButton.X, info.MiscPoint.BackButton.Y, 0, 0)
+			time.Sleep(1500 * time.Millisecond)
+			MyOpenCV.If_LoadingInterface(10)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return
+			}
 		}
+
+		//点战场角色界面按钮,这里其实是退出战场角色界面
 		time.Sleep(500 * time.Millisecond)
-		if MyOpenCV.ColorCmp(info.IF.If_BattleFieldRole.ColorsCmp, 0.8) {
-			motion.Click(644, 652, 0, 0) //点战场角色界面按钮,这里其实是退出战场角色界面
+		if MyOpenCV.ColorCmp(info.IF.If_BattleFieldRole.ColorsCmp, 0.8) && x == -1 && y == -1 {
+			motion.Click(644, 652, 0, 0)
+			time.Sleep(1500 * time.Millisecond)
+			MyOpenCV.If_LoadingInterface(10)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return
+			}
 		}
-		time.Sleep(1500 * time.Millisecond)
-		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
-			return
-		}
+
 		time.Sleep(500 * time.Millisecond)
 		//如果还不在那可能是打开钻石金币弹窗了点一下战场界面按钮
-		motion.Click(644, 652, 0, 0)                          //点战场角色界面按钮,关闭金币弹窗
-		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
-			return
+		if x == -1 && y == -1 {
+			motion.Click(644, 652, 0, 0) //点战场角色界面按钮,关闭金币弹窗
+			time.Sleep(1500 * time.Millisecond)
+			MyOpenCV.If_LoadingInterface(10)
+			if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+				return
+			}
 		}
-		time.Sleep(1500 * time.Millisecond)
-
 	}
+
+	//如果还不行大概率是背景太白了,点一下返回键试试
+	motion.Click(info.MiscPoint.BackButton.X, info.MiscPoint.BackButton.Y, 0, 0)
+	time.Sleep(1500 * time.Millisecond)
+	MyOpenCV.If_LoadingInterface(10)
+	if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //判断是不是已经在跑图界面
+		return
+	}
+
 	println("无法返回跑图界面")
 	os.Exit(0)
 }
