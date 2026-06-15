@@ -191,7 +191,7 @@ func If_LoadingInterface(sim float32) bool {
 	return true
 }
 
-func If_chapterSelectInterface() *[]byte {
+func ChapterSelectInterface() *[]byte {
 	return GetByte(info.ChapterSelectInterfaceImg_path)
 }
 

@@ -151,10 +151,20 @@ func Chapter_Tp(
 }
 
 func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { //必须在章节界面
-	img := MyOpenCV.If_chapterSelectInterface()
+	imgCSI := MyOpenCV.ChapterSelectInterface()
+	imgCSB := MyOpenCV.GetByte(info.ChapterSelectButtonImg_path)
+
 	chapterImg := MyOpenCV.GetByte(chapterImg_path)
 	if chapterImg == nil {
-		println("章节图片读取错误,请检查路径权限或文件是否存在")
+		println("章节选择图片读取错误,请检查路径权限或文件是否存在")
+		os.Exit(0)
+	}
+	if imgCSB == nil {
+		println("章节按钮图片读取错误,请检查路径权限或文件是否存在")
+		os.Exit(0)
+	}
+	if imgCSI == nil {
+		println("章节检测图片读取错误,请检查路径权限或文件是否存在")
 		os.Exit(0)
 	}
 
@@ -163,9 +173,17 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 	motion.Click(640, 360, 0, 0)
 
 	for i := 0; i < 3; i++ { //进入章节选择
-		motion.Click(553, 652, 0, 0)
+		x, y := opencv.FindImage(519, 614, 651, 691, imgCSB, false, true, 0.5, 0)
+		if x == -1 || y == -1 {
+			if i == 2 {
+				return info.GoToRunMapInterface, errors.New("未找到章节选择按钮,退到跑图界面重试")
+			}
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		motion.Click(x, y, 0, 0)
 		time.Sleep(1 * time.Second)
-		x, y := opencv.FindImage(37, 670, 1202, 720, img, false, false, 0.5, 0)
+		x, y = opencv.FindImage(37, 670, 1202, 720, imgCSI, false, false, 0.5, 0)
 		//println(x, y)
 		if x != -1 && y != -1 {
 			break
@@ -198,7 +216,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		time.Sleep(1000 * time.Millisecond)
 
 		for i := 0; i < 6; i++ { //确认退出选章节界面
-			x, y := opencv.FindImage(1, 585, 1276, 677, img, false, false, 0.8, 0)
+			x, y := opencv.FindImage(1, 585, 1276, 677, imgCSI, false, false, 0.8, 0)
 			if x == -1 && y == -1 {
 				break
 			}
@@ -236,7 +254,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 	}
 
 	for i := 0; i < 6; i++ { //确认退出选章节界面
-		x, y := opencv.FindImage(1, 585, 1276, 677, img, false, false, 0.8, 0)
+		x, y := opencv.FindImage(1, 585, 1276, 677, imgCSI, false, false, 0.8, 0)
 		if x == -1 && y == -1 {
 			break
 		}

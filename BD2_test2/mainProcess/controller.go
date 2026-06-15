@@ -180,7 +180,7 @@ func (c *Controller) RunByName(names ...string) error {
 }
 
 func GoToRunMapInterface() {
-	imgCS := MyOpenCV.If_chapterSelectInterface()
+	imgCS := MyOpenCV.ChapterSelectInterface()
 	x, y := opencv.FindImage(37, 670, 1202, 720, imgCS, false, false, 0.5, 0)
 	for i := 0; i < 3; i++ {
 		if MyOpenCV.ColorCmp(info.IF.If_Map.ColorsCmp, 0.8) { //先判断是不是已经在跑图界面

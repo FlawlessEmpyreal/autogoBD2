@@ -22,6 +22,7 @@ var (
 	BattleInterfaceDetect_path     = path.Join(ImgRoot, "misc/BattleInterfaceDetect.jpg")
 	BackButton_path                = path.Join(ImgRoot, "misc/backButton.png")
 	EscapeImg_path                 = path.Join(ImgRoot, "misc/escapeDetect.png")
+	ChapterSelectButtonImg_path    = path.Join(ImgRoot, "misc/ChapterSelectButton")
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//=====================labels===============
 
