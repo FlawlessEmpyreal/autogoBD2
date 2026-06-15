@@ -168,9 +168,9 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		os.Exit(0)
 	}
 
-	motion.Click(640, 360, 0, 0) //刷新运动状态
-	time.Sleep(500 * time.Millisecond)
-	motion.Click(640, 360, 0, 0)
+	//motion.Click(640, 360, 0, 0) //刷新运动状态
+	//time.Sleep(500 * time.Millisecond)
+	//motion.Click(640, 360, 0, 0)
 
 	for i := 0; i < 3; i++ { //进入章节选择
 		x, y := opencv.FindImage(519, 614, 651, 691, imgCSB, false, true, 0.5, 0)

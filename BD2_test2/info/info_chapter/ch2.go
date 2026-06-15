@@ -14,9 +14,10 @@ var Ch2 = info.ChapterConfig{
 	YoloLable:       "chapter2_monster",
 	MapConfig: []info.MapConfig{
 		{
-			MapName:     1,
-			TpPoint:     image.Point{577, 324},
-			BigMapPath:  path.Join(info.ImgRoot, "map/scaled_grey_Extend_chapter2_1.jpg"),
+			MapName:    1,
+			TpPoint:    image.Point{577, 324},
+			BigMapPath: path.Join(info.ImgRoot, "map/scaled_grey_Extend_chapter2_1.jpg"),
+			//Bin_mapPath: path.Join(info.ImgRoot, "map/bin_map_chapter2_1.jpg"),
 			Bin_mapPath: path.Join(info.ImgRoot, "map/bin_map_chapter2_1.jpg"),
 			MapFind: info.MapFind{
 				Function: "第二章地图1界面找色",
@@ -25,6 +26,7 @@ var Ch2 = info.ChapterConfig{
 					{X: 630, Y: 219, Color: "9c998f"},
 					{X: 551, Y: 294, Color: "9d9d94"},
 					{X: 601, Y: 449, Color: "98958a"},
+					{X: 579, Y: 481, Color: "54c47d"},
 				},
 			},
 			MonsterLocation: []image.Point{

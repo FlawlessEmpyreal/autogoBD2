@@ -22,7 +22,7 @@ var (
 	BattleInterfaceDetect_path     = path.Join(ImgRoot, "misc/BattleInterfaceDetect.jpg")
 	BackButton_path                = path.Join(ImgRoot, "misc/backButton.png")
 	EscapeImg_path                 = path.Join(ImgRoot, "misc/escapeDetect.png")
-	ChapterSelectButtonImg_path    = path.Join(ImgRoot, "misc/ChapterSelectButton")
+	ChapterSelectButtonImg_path    = path.Join(ImgRoot, "misc/chapterSelectButton.png")
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//=====================labels===============
 
@@ -37,7 +37,7 @@ var (
 	//================reg para==============
 
 	//是否注册章节
-	RegCh1 = true
+	RegCh1 = false
 	RegCh2 = true
 
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

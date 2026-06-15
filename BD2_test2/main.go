@@ -1,6 +1,10 @@
 package main
 
-import "app/mainProcess"
+import (
+	"app/MyOpenCV"
+	"app/info/info_chapter"
+	"fmt"
+)
 
 func main() {
 
@@ -26,7 +30,10 @@ func main() {
 	//	fmt.Println(results)
 	//}
 
-	mainProcess.MainProcess()
+	//mainProcess.MainProcess()
+	x, y := MyOpenCV.MapMatch(info_chapter.Ch2.MapConfig[1].BigMapPath,
+		143, 110, 285, 252, true, false, 0.5)
+	fmt.Printf("x: %d, y: %d\n", x, y)
 
 	//aStar.Handle()
 

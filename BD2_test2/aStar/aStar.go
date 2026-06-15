@@ -697,7 +697,7 @@ var (
 func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 	go func() {
 		for {
-			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.5)
 			if x == -1 && y == -1 {
 				//println("==========循环获取坐标:", x, y)
 				//println("==========循环获取坐标出错")
@@ -712,6 +712,7 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 
 func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) info.WayFindState {
 	if len(path) == 0 {
+		println("1")
 		return info.STATE_CDT_Useless // 假如路径为空当坐标异常处理，触发重新寻路
 	}
 	defer myMotion.StopMove()
@@ -744,6 +745,9 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) i
 			}
 
 			if dist > info.ErrDist {
+				println("2")
+				holdX, holdY := myMotion.CalcHoldPoint(cur.X, cur.Y, waypoint.X, waypoint.Y)
+				motion.Click(holdX, holdY, 0, 0)
 				return info.STATE_CDT_Useless
 			}
 
@@ -780,7 +784,7 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 		StartMapMonitor(bigMapPath, cancel)
 
 		// 获取当前坐标
-		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+		x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.5)
 		//println("==========获取当前坐标:", x, y)
 		if x == -1 && y == -1 {
 			println("\n==========获取当前坐标出错=========\n")
@@ -811,6 +815,7 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 			trycount++
 			if trycount > 5 {
 				cancel()
+				println("3")
 				return info.STATE_CDT_Useless
 			}
 			cancel()
