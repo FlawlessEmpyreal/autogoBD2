@@ -39,7 +39,7 @@ var Ch2 = info.ChapterConfig{
 		},
 		{
 			MapName:     2,
-			TpPoint:     image.Point{596, 371},
+			TpPoint:     image.Point{659, 214},
 			BigMapPath:  path.Join(info.ImgRoot, "map/scaled_grey_Extend_chapter2_2.jpg"),
 			Bin_mapPath: path.Join(info.ImgRoot, "map/bin_map_chapter2_2.jpg"),
 			MapFind: info.MapFind{
@@ -52,11 +52,11 @@ var Ch2 = info.ChapterConfig{
 				},
 			},
 			MonsterLocation: []image.Point{
+				{X: 354, Y: 98},
+				{X: 223, Y: 115},
+				{X: 213, Y: 211},
 				{X: 193, Y: 357},
 				{X: 120, Y: 417},
-				{X: 213, Y: 211},
-				{X: 223, Y: 115},
-				{X: 354, Y: 98},
 			},
 		},
 	},

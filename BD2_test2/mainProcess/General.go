@@ -173,15 +173,21 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 	//motion.Click(640, 360, 0, 0)
 
 	for i := 0; i < 3; i++ { //进入章节选择
-		x, y := opencv.FindImage(519, 614, 651, 691, imgCSB, false, true, 0.5, 0)
-		if x == -1 || y == -1 {
+		//找章节选择的位置，有两个
+		x, y := opencv.FindImage(530, 630, 577, 675, imgCSB, true, true, 0.7, 0)
+		x1, y1 := opencv.FindImage(578, 630, 630, 675, imgCSB, true, true, 0.7, 0)
+		if x != -1 && y != -1 {
+			motion.Click(553, 653, 0, 0)
+		} else if x1 != -1 && y1 != -1 {
+			motion.Click(600, 653, 0, 0)
+		} else {
 			if i == 2 {
 				return info.GoToRunMapInterface, errors.New("未找到章节选择按钮,退到跑图界面重试")
 			}
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		motion.Click(x, y, 0, 0)
+
 		time.Sleep(1 * time.Second)
 		x, y = opencv.FindImage(37, 670, 1202, 720, imgCSI, false, false, 0.5, 0)
 		//println(x, y)

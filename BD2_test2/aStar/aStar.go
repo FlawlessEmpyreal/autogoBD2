@@ -745,8 +745,10 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) i
 			}
 
 			if dist > info.ErrDist {
-				println("2")
+				//println("2")
 				holdX, holdY := myMotion.CalcHoldPoint(cur.X, cur.Y, waypoint.X, waypoint.Y)
+				motion.Click(640, 360, 0, 0)
+				time.Sleep(500 * time.Millisecond)
 				motion.Click(holdX, holdY, 0, 0)
 				return info.STATE_CDT_Useless
 			}
