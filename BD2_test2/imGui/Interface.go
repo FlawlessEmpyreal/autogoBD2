@@ -1,83 +1,299 @@
 package imGui
 
+// =====================================================================================
+// 依赖说明（必须先在 info 包里做以下修改，否则本文件编译不过）：
+//
+//   package info
+//
+//   var RegChAll bool
+//   var RegCh = make([]bool, 30) // 下标 0~29 对应第 1~30 章的勾选状态
+//
+// 原来的 RegCh1 / RegCh2 两个独立布尔量，替换成了一个 []bool 切片，
+// 这样无论是 2 章还是 30 章都是同一套逻辑，不用每加一章就加一个变量。
+// mainProcess.MainProcess() 里如果直接用到了 info.RegCh1 / info.RegCh2，
+// 也需要同步改成遍历 info.RegCh，判断哪些下标为 true。
+// =====================================================================================
+
 import (
 	"app/info"
 	"app/mainProcess"
+	"fmt"
 
 	"github.com/Dasongzi1366/AutoGo/imgui"
 )
 
+// ------------------------------- 基础配置 -------------------------------
+
+var totalChapters = len(mainProcess.ChapterHandlers) // 章节总数
+const (
+	chaptersPerRow = 6 // 每行排几个，对应截图里的横排勾选框
+	sidebarWidth   = 150
+)
+
+// ------------------------------- 配色方案 -------------------------------
+// 整体走深色界面 + 青柚色（teal）点缀，比纯黑底配荧光绿更柔和、更耐看。
+// 如果想换主题色，只改 colAccent 系列三个值即可，其余颜色会自动呼应。
+
+var (
+	colWindowBg  = imgui.Vec4{X: 0.10, Y: 0.11, Z: 0.15, W: 1.00} // 主窗口背景
+	colLeftBg    = imgui.Vec4{X: 0.13, Y: 0.14, Z: 0.18, W: 1.00} // 左侧内容区背景
+	colSidebarBg = imgui.Vec4{X: 0.08, Y: 0.09, Z: 0.12, W: 1.00} // 右侧功能栏背景，更深一层做区分
+
+	colAccent       = imgui.Vec4{X: 0.30, Y: 0.80, Z: 0.70, W: 1.00} // 主题强调色：青柚绿
+	colAccentSoft   = imgui.Vec4{X: 0.30, Y: 0.80, Z: 0.70, W: 0.55} // 半透明版本，给 hover/选中态用
+	colAccentHover  = imgui.Vec4{X: 0.36, Y: 0.86, Z: 0.76, W: 1.00}
+	colAccentActive = imgui.Vec4{X: 0.26, Y: 0.74, Z: 0.64, W: 1.00}
+
+	colFrameBg        = imgui.Vec4{X: 0.19, Y: 0.21, Z: 0.26, W: 1.00} // 复选框未勾选时的底色
+	colFrameBgHovered = imgui.Vec4{X: 0.24, Y: 0.27, Z: 0.33, W: 1.00}
+	colFrameBgActive  = imgui.Vec4{X: 0.22, Y: 0.24, Z: 0.30, W: 1.00}
+
+	colSeparator = imgui.Vec4{X: 0.30, Y: 0.80, Z: 0.70, W: 0.35} // 每行下方的分隔线，呼应主题色但偏淡
+	colText      = imgui.Vec4{X: 0.93, Y: 0.94, Z: 0.96, W: 1.00}
+	colTextDim   = imgui.Vec4{X: 0.60, Y: 0.62, Z: 0.68, W: 1.00} // 说明性文字，弱化显示
+)
+
+// ------------------------------- 功能页签 -------------------------------
+// 右侧"功能选项"栏点击后切换左侧显示的内容，类似截图里的翻页效果。
+// 以后想加新功能页，只要在 pageList 里加一行、再写一个 renderXxxPage() 函数即可。
+
+type pageID int
+
+const (
+	pageChapters pageID = iota
+	pageSettings
+	pageAbout
+)
+
+var pageList = []struct {
+	id    pageID
+	label string
+}{
+	{pageChapters, "章节选择"},
+	{pageSettings, "运行设置"},
+	{pageAbout, "关于"},
+}
+
+// ------------------------------- 运行时状态 -------------------------------
+
+var (
+	currentPage pageID = pageChapters
+	showWindow         = true
+	isRunning          = false
+)
+
+// ------------------------------- 入口函数 -------------------------------
+
 func ImGuiRun() {
-	// 初始化 ImGui
 	imgui.Init()
 
-	// 1. 定义状态变量
-	showWindow := true // 控制窗口是否显示
-	isRunning := false // 控制脚本是否正在运行
 	info.RegChAll = false
-	info.RegCh1 = false // 复选框绑定的布尔变量
-	info.RegCh2 = false
+	if info.RegCh == nil || len(info.RegCh) != totalChapters {
+		info.RegCh = make([]bool, totalChapters)
+	}
 
-	// 2. 主循环
 	imgui.Run(func() {
-		// 如果脚本正在运行，可以选择不显示窗口，或者显示一个“运行中”的提示
-		if !isRunning && showWindow {
-			// 设置窗口大小，只在首次创建时生效
-			imgui.SetNextWindowSizeV(imgui.Vec2{X: 900, Y: 500}, imgui.CondOnce)
+		if isRunning || !showWindow {
+			return
+		}
 
-			// 创建窗口。第二个参数传入 &showWindow，点击窗口右上角的 X 也会关闭
-			imgui.BeginV("AutoBD2", &showWindow, 0)
+		imgui.SetNextWindowSizeV(imgui.Vec2{X: 920, Y: 560}, imgui.CondOnce)
 
-			// 添加复选框控件
-			// 勾选时自动变为 true，取消勾选变为 false
-			imgui.Checkbox("All", &info.RegChAll)
-			if info.RegChAll {
-				info.RegCh1 = true
-				info.RegCh2 = true
-			}
+		// ---- 整体主题色入栈，作用到这一帧的整个窗口 ----
+		imgui.PushStyleColorVec4(imgui.ColWindowBg, colWindowBg)
+		imgui.PushStyleColorVec4(imgui.ColChildBg, colLeftBg)
+		imgui.PushStyleColorVec4(imgui.ColText, colText)
+		imgui.PushStyleColorVec4(imgui.ColSeparator, colSeparator)
+		imgui.PushStyleColorVec4(imgui.ColButton, colAccent)
+		imgui.PushStyleColorVec4(imgui.ColButtonHovered, colAccentHover)
+		imgui.PushStyleColorVec4(imgui.ColButtonActive, colAccentActive)
+		imgui.PushStyleColorVec4(imgui.ColHeader, colAccentSoft) // Selectable 选中态背景
+		imgui.PushStyleColorVec4(imgui.ColHeaderHovered, colAccentHover)
+		imgui.PushStyleColorVec4(imgui.ColHeaderActive, colAccent)
 
-			//渲染子选项复选框
-			imgui.Checkbox("ch1", &info.RegCh1)
-			imgui.Checkbox("ch2", &info.RegCh2)
+		imgui.BeginV("AutoBD2", &showWindow, 0)
 
-			//子选项状态 -> 全选状态（向上同步）
-			// 如果用户手动取消了 ch1 或 ch2，全选状态必须立刻变为 false
-			if !info.RegCh1 || !info.RegCh2 {
-				info.RegChAll = false
-			}
+		renderBody()
 
+		imgui.End()
+
+		imgui.PopStyleColorV(10) // 对应上面 10 次 PushStyleColor，必须成对
+	})
+
+	select {}
+}
+
+// ------------------------------- 左右两栏布局 -------------------------------
+
+func renderBody() {
+	avail := imgui.ContentRegionAvail()
+	leftWidth := avail.X - sidebarWidth - 12 // 12 是左右两栏之间留的空隙
+	if leftWidth < 200 {
+		leftWidth = 200
+	}
+	imgui.BeginChildStrV("left_panel", imgui.Vec2{X: leftWidth, Y: 0}, imgui.ChildFlagsAlwaysAutoResize, 0)
+	switch currentPage {
+	case pageChapters:
+		renderChapterPage()
+	case pageSettings:
+		renderSettingsPage()
+	case pageAbout:
+		renderAboutPage()
+	}
+	imgui.EndChild()
+
+	imgui.SameLine()
+
+	imgui.PushStyleColorVec4(imgui.ColChildBg, colSidebarBg)
+	imgui.BeginChildStrV("right_panel", imgui.Vec2{X: sidebarWidth, Y: 0}, imgui.ChildFlagsAlwaysAutoResize, 0)
+	renderSidebar()
+	imgui.EndChild()
+	imgui.PopStyleColor()
+}
+
+// ------------------------------- 右侧：功能选项栏 -------------------------------
+
+func renderSidebar() {
+	imgui.Text("功能选项")
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	for _, p := range pageList {
+		selected := currentPage == p.id
+		if imgui.SelectableBoolV(p.label, selected, 0, imgui.Vec2{X: 0, Y: 32}) {
+			currentPage = p.id
+		}
+		imgui.Spacing()
+	}
+}
+
+// ------------------------------- 左侧：章节选择页 -------------------------------
+
+func renderChapterPage() {
+	imgui.Text("选择需要运行的章节")
+	imgui.Spacing()
+
+	if imgui.Checkbox("全选", &info.RegChAll) {
+		applySelectAllToIndividual()
+	}
+	imgui.SameLineV(0, 24)
+	runClicked := imgui.Button("点击运行")
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	renderChapterGrid()
+
+	if runClicked {
+		isRunning = true
+		showWindow = false
+
+		go func() {
+			mainProcess.MainProcess()
+			isRunning = false
+			showWindow = true
+		}()
+	}
+}
+
+// renderChapterGrid 画出截图里那种横排小勾选框、数字写在框下面、每行一条分隔线的效果。
+func renderChapterGrid() {
+	// 缩小复选框尺寸 + 换主题色，只在这个区域内生效，画完就弹出，不影响其他控件
+	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 4, Y: 4})
+	imgui.PushStyleColorVec4(imgui.ColFrameBg, colFrameBg)
+	imgui.PushStyleColorVec4(imgui.ColFrameBgHovered, colFrameBgHovered)
+	imgui.PushStyleColorVec4(imgui.ColFrameBgActive, colFrameBgActive)
+	imgui.PushStyleColorVec4(imgui.ColCheckMark, colAccent)
+
+	boxSize := imgui.FrameHeight() // 当前样式下复选框的边长，用来把数字居中对齐到框下面
+
+	for idx := 0; idx < totalChapters; idx++ {
+		imgui.PushIDInt(int32(idx))
+		imgui.BeginGroup()
+
+		groupStartX := imgui.CursorPosX()
+
+		checked := info.RegCh[idx]
+		if imgui.Checkbox("", &checked) {
+			info.RegCh[idx] = checked
+			syncSelectAllFromIndividual()
+		}
+
+		label := fmt.Sprintf("%d", idx+1)
+		textSize := imgui.CalcTextSize(label)
+		offsetX := (boxSize - textSize.X) / 2
+		if offsetX < 0 {
+			offsetX = 0
+		}
+		imgui.SetCursorPos(imgui.Vec2{X: groupStartX + offsetX, Y: imgui.CursorPosY()})
+		imgui.Text(label)
+
+		imgui.EndGroup()
+		imgui.PopID()
+
+		isRowEnd := (idx+1)%chaptersPerRow == 0
+		isLast := idx == totalChapters-1
+
+		if !isRowEnd {
+			imgui.SameLine()
+		} else if !isLast {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-
-			// 4. 添加运行按钮
-			if imgui.Button("点击运行") {
-				isRunning = true
-				showWindow = false // 点击后隐藏窗口
-
-				// 启动你的脚本协程
-				go func() {
-					// 模拟脚本运行耗时
-					mainProcess.MainProcess()
-					//fmt.Println("脚本运行结束")
-
-					// 脚本运行完毕后，可以重新显示窗口
-					isRunning = false
-					showWindow = true
-				}()
-			}
-
-			imgui.End()
 		}
-		//} else if isRunning {
-		// 脚本运行中，显示一个小的提示窗口（可选）
-		//imgui.SetNextWindowSizeV(imgui.Vec2{X: 200, Y: 80}, imgui.CondOnce)
-		//imgui.BeginV("运行状态", nil, 0)
-		//imgui.Text("脚本正在后台运行...")
-		//imgui.End()
-		//}
-	})
+	}
 
-	// 阻塞主进程
-	select {}
+	imgui.PopStyleColorV(4)
+	imgui.PopStyleVar()
+}
+
+// ------------------------------- 左侧：运行设置页（占位，按需扩展） -------------------------------
+
+func renderSettingsPage() {
+	imgui.Text("运行设置")
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	imgui.PushStyleColorVec4(imgui.ColText, colTextDim)
+	imgui.Text("这里可以放延迟时间、循环次数之类的参数设置。")
+	imgui.Text("先留空，等需要的时候再加对应的控件。")
+	imgui.PopStyleColor()
+}
+
+// ------------------------------- 左侧：关于页（占位） -------------------------------
+
+func renderAboutPage() {
+	imgui.Text("关于")
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+	imgui.Text("AutoBD2 自动化脚本")
+
+	imgui.PushStyleColorVec4(imgui.ColText, colTextDim)
+	imgui.Text("此页面仅作占位展示，方便后续扩展更多功能选项。")
+	imgui.PopStyleColor()
+}
+
+// ------------------------------- 全选 <-> 单项 状态同步 -------------------------------
+
+// applySelectAllToIndividual 在用户点击"全选"复选框后，把状态广播给所有单项。
+func applySelectAllToIndividual() {
+	for i := range info.RegCh {
+		info.RegCh[i] = info.RegChAll
+	}
+}
+
+// syncSelectAllFromIndividual 在任意单项变化后，重新计算"全选"该不该是勾选状态。
+// 只要有一个没勾上，"全选"就要变回未勾选；全部勾上才让"全选"变成勾选。
+func syncSelectAllFromIndividual() {
+	for _, v := range info.RegCh {
+		if !v {
+			info.RegChAll = false
+			return
+		}
+	}
+	info.RegChAll = true
 }

@@ -6,18 +6,31 @@ import (
 	"app/info"
 )
 
-func RegisterChapters(Ctrl *Controller) {
-	// -------- Chapter 1 --------
-	if info.RegCh1 {
-		RegChapter1(Ctrl)
-	}
-	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-	// -------- Chapter 2 --------
-	if info.RegCh2 {
-		RegChapter2(Ctrl)
-	}
-	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var ChapterHandlers = []func(*Controller){
+	RegChapter1, // 第1章
+	RegChapter2, // 第2章
 }
+
+func RegisterChapters(Ctrl *Controller) {
+	for i, handler := range ChapterHandlers {
+		if info.RegCh[i] {
+			handler(Ctrl)
+		}
+	}
+}
+
+//func RegisterChapters(Ctrl *Controller) {
+//	// -------- Chapter 1 --------
+//	if info.RegCh1 {
+//		RegChapter1(Ctrl)
+//	}
+//	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//	// -------- Chapter 2 --------
+//	if info.RegCh2 {
+//		RegChapter2(Ctrl)
+//	}
+//	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//}
 
 //func Chapter1() {
 //

@@ -38,6 +38,7 @@ var (
 
 	//是否注册章节
 	RegChAll bool
+	RegCh    []bool
 	RegCh1   bool
 	RegCh2   bool
 
