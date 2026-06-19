@@ -1,16 +1,15 @@
 package main
 
-import (
-	"app/imGui"
-)
+import "app/imGui"
 
 func main() {
 
-	//MyOpenCV.Img2Gery("/mnt/shared/Pictures/img/map/scaled_grey_Extend_chapter2_2.jpg")
-	//MyOpenCV.ReSizeImg("/mnt/shared/Pictures/img/map/grey_Extend_chapter2_1.jpg", 0.87)
-	//MyOpenCV.ReSizeImg("/mnt/shared/Pictures/img/map/grey_Extend_chapter2_2.jpg", 0.87)
-	//aStar.BuildObstacleMap("/mnt/shared/Pictures/img/map/init_bin_map_chapter2_1.jpg", "bin_map_chapter2_1.jpg")
-	//aStar.BuildObstacleMap("/mnt/shared/Pictures/img/map/scaled_grey_Extend_chapter2_2.jpg", "bin_map_chapter2_2.jpg")
+	//MyOpenCV.Img2Gery("/mnt/shared/Pictures/img/map/Extend_chapter3_1.jpg")
+	//MyOpenCV.Img2Gery("/mnt/shared/Pictures/img/map/Extend_chapter3_2.jpg")
+	//MyOpenCV.ReSizeImg("/mnt/shared/Pictures/img/map/grey_Extend_chapter3_1.jpg", 0.87)
+	//MyOpenCV.ReSizeImg("/mnt/shared/Pictures/img/map/grey_Extend_chapter3_2.jpg", 0.87)
+	//aStar.BuildObstacleMap("/mnt/shared/Pictures/img/map/scaled_grey_Extend_chapter3_1.jpg", "bin_map_chapter3_1.jpg")
+	//aStar.BuildObstacleMap("/mnt/shared/Pictures/img/map/scaled_grey_Extend_chapter3_2.jpg", "bin_map_chapter3_2.jpg")
 
 	//yoloModel := yolo2.New(
 	//	"v5",
@@ -32,9 +31,25 @@ func main() {
 
 	imGui.ImGuiRun()
 
-	//x, y := MyOpenCV.MapMatch(info_chapter.Ch2.MapConfig[1].BigMapPath,
+	//x, y := MyOpenCV.MapMatch(info_chapter.Ch3.MapConfig[1].BigMapPath,
 	//	143, 110, 285, 252, true, false, 0.5)
 	//fmt.Printf("x: %d, y: %d\n", x, y)
+
+	//start := aStar.Point{X: x, Y: y}
+	//end := aStar.Point{X: 304, Y: 273}
+	//astarMap, _ := aStar.LoadObstacleMap("/mnt/shared/Pictures/img/map/bin_map_chapter3_1.jpg")
+	////path := aStar.FindPath(astarMap, start, end)
+	//aStar.FindPath(astarMap, start, end)
+	// 打印路径点，找到角色当前位置附近的那几个点
+	//cur := aStar.getCurrentPos()
+	//for i, p := range path {
+	//	dx := p.X - start.X
+	//	dy := p.Y - start.Y
+	//	dist := math.Sqrt(float64(dx*dx + dy*dy))
+	//	if dist < 50 { // 只打印附近的点
+	//		fmt.Printf("路径点%d: (%d,%d) 距当前位置=%.1f\n", i, p.X, p.Y, dist)
+	//	}
+	//}
 
 	//aStar.Handle()
 
@@ -45,4 +60,5 @@ func main() {
 	//	return
 	//}
 	//fmt.Println("当前工作目录:", dir)
+
 }

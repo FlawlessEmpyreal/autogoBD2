@@ -33,6 +33,11 @@ type Controller struct {
 	chapters []*ChapterConfig
 }
 
+type RegInfo struct {
+	RegFunc func(*Controller)
+	RegName string
+}
+
 func NewController() *Controller {
 	return &Controller{}
 }

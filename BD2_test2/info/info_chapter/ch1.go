@@ -30,7 +30,7 @@ var Ch1 = info.ChapterConfig{
 				},
 			},
 			MonsterLocation: []image.Point{
-				{X: 256, Y: 397},
+				{X: 258, Y: 415},
 				{X: 338, Y: 380},
 				{X: 420, Y: 332},
 				{X: 304, Y: 233},

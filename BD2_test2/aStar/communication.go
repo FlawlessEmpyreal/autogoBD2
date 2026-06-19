@@ -1,10 +1,12 @@
-package Web
+package aStar
 
 import (
-	"app/aStar"
+	"app/MyOpenCV"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -17,15 +19,15 @@ type Coord struct {
 
 // 低频发送：只在计算出新路径时发一次（大包）
 type PathMsg struct {
-	Type string        `json:"type"` // 固定填 "path"
-	Path []aStar.Point `json:"path"`
-	Ts   int64         `json:"ts"`
+	Type string  `json:"type"` // 固定填 "path"
+	Path []Point `json:"path"`
+	Ts   int64   `json:"ts"`
 }
 
-type Point struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
+//type Point struct {
+//	X int `json:"x"`
+//	Y int `json:"y"`
+//}
 
 // Sender 封装UDP发送器
 type Sender struct {
@@ -77,7 +79,7 @@ func (s *Sender) SendCoord(x, y int) error {
 }
 
 // 发送路径
-func (s *Sender) SendPath(Path []aStar.Point) error {
+func (s *Sender) SendPath(Path []Point) error {
 
 	data, err := json.Marshal(PathMsg{
 		Type: "path",
@@ -100,4 +102,51 @@ func (s *Sender) SendPath(Path []aStar.Point) error {
 // Close 关闭连接
 func (s *Sender) Close() {
 	s.conn.Close()
+}
+
+func Sending() {
+	bin_mapPath := "/mnt/shared/Pictures/img/map/bin_map_chapter3_1.jpg"
+	bigMapPath := "/mnt/shared/Pictures/img/map/scaled_grey_Extend_chapter3_1.jpg"
+	obstacle, _ := LoadObstacleMap(bin_mapPath)
+	// 获取起点
+	x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+	start := Point{X: x, Y: y}
+
+	var end Point
+	end.X = 356
+	end.Y = 148
+
+	sender, _ := NewSender("192.168.31.229:7568")
+	defer sender.Close()
+	path := AStar(obstacle, start, end)
+	var mu sync.Mutex
+
+	// 专门发送坐标和路径的线程
+	go func() {
+		// 发送一次路径
+		mu.Lock()
+		sender.SendPath(path)
+		mu.Unlock()
+
+		// 持续发送坐标
+		for {
+			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+			mu.Lock()
+			sender.SendCoord(x, y)
+			mu.Unlock()
+			time.Sleep(200 * time.Millisecond)
+		}
+	}()
+
+	ctx, _ := context.WithCancel(context.Background())
+	// 调用followPath开始寻路
+	FollowPath(
+		ctx,
+		path,
+		// getCurrentPos：每次调用返回当前坐标
+		func() Point {
+			x, y := MyOpenCV.MapMatch(bigMapPath, 143, 110, 285, 252, true, false, 0.6)
+			return Point{X: x, Y: y}
+		},
+	)
 }

@@ -6,15 +6,16 @@ import (
 	"app/info"
 )
 
-var ChapterHandlers = []func(*Controller){
-	RegChapter1, // 第1章
-	RegChapter2, // 第2章
+var ChapterHandlers = []RegInfo{
+	{RegChapter1, "ch1"}, // 第1章
+	{RegChapter2, "ch2"}, // 第2章、
+	{RegChapter3, "ch3"}, // 第2章
 }
 
 func RegisterChapters(Ctrl *Controller) {
-	for i, handler := range ChapterHandlers {
+	for i := 0; i < len(ChapterHandlers); i++ {
 		if info.RegCh[i] {
-			handler(Ctrl)
+			ChapterHandlers[i].RegFunc(Ctrl)
 		}
 	}
 }

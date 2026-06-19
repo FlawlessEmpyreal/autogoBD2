@@ -24,10 +24,10 @@ import (
 
 // ------------------------------- 基础配置 -------------------------------
 
-var totalChapters = len(mainProcess.ChapterHandlers) // 章节总数
+var totalChapters = len(mainProcess.ChapterHandlers) // 主线章节总数
 const (
-	chaptersPerRow = 6 // 每行排几个，对应截图里的横排勾选框
-	sidebarWidth   = 150
+	chaptersPerRow = 6   // 每行排几个，对应截图里的横排勾选框
+	sidebarWidth   = 150 //右侧功能栏固定宽度
 )
 
 // ------------------------------- 配色方案 -------------------------------
@@ -69,17 +69,17 @@ var pageList = []struct {
 	id    pageID
 	label string
 }{
-	{pageChapters, "章节选择"},
-	{pageSettings, "运行设置"},
-	{pageAbout, "关于"},
+	{pageChapters, "撞怪"},
+	{pageSettings, "跑商"},
+	{pageAbout, "日志"},
 }
 
 // ------------------------------- 运行时状态 -------------------------------
 
 var (
-	currentPage pageID = pageChapters
+	currentPage pageID = pageChapters //记录当前显示的是哪个页面
 	showWindow         = true
-	isRunning          = false
+	isRunning          = false //防止任务重复启动的锁
 )
 
 // ------------------------------- 入口函数 -------------------------------
@@ -113,7 +113,7 @@ func ImGuiRun() {
 
 		imgui.BeginV("AutoBD2", &showWindow, 0)
 
-		renderBody()
+		renderBody() // 核心布局渲染
 
 		imgui.End()
 
@@ -128,10 +128,12 @@ func ImGuiRun() {
 func renderBody() {
 	avail := imgui.ContentRegionAvail()
 	leftWidth := avail.X - sidebarWidth - 12 // 12 是左右两栏之间留的空隙
+
+	// 左侧面板
 	if leftWidth < 200 {
 		leftWidth = 200
 	}
-	imgui.BeginChildStrV("left_panel", imgui.Vec2{X: leftWidth, Y: 0}, imgui.ChildFlagsAlwaysAutoResize, 0)
+	imgui.BeginChildStrV("left_panel", imgui.Vec2{X: leftWidth, Y: 0}, imgui.ChildFlagsAlwaysAutoResize, 0) //创建子窗口容器。左侧宽度自适应，右侧固定宽度。
 	switch currentPage {
 	case pageChapters:
 		renderChapterPage()
@@ -142,8 +144,9 @@ func renderBody() {
 	}
 	imgui.EndChild()
 
-	imgui.SameLine()
+	imgui.SameLine() //取消换行，让左右两个子窗口并排显示。
 
+	// 右侧面板
 	imgui.PushStyleColorVec4(imgui.ColChildBg, colSidebarBg)
 	imgui.BeginChildStrV("right_panel", imgui.Vec2{X: sidebarWidth, Y: 0}, imgui.ChildFlagsAlwaysAutoResize, 0)
 	renderSidebar()
@@ -154,14 +157,16 @@ func renderBody() {
 // ------------------------------- 右侧：功能选项栏 -------------------------------
 
 func renderSidebar() {
-	imgui.Text("功能选项")
+	imgui.Text("选项")
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
 
+	//点击按钮时，更新 currentPage 变量，从而触发左侧内容切换。
 	for _, p := range pageList {
 		selected := currentPage == p.id
-		if imgui.SelectableBoolV(p.label, selected, 0, imgui.Vec2{X: 0, Y: 32}) {
+
+		if imgui.SelectableBoolV(p.label, selected, 0, imgui.Vec2{X: 0, Y: 32}) { //创建可选中的按钮，高度固定为 32。
 			currentPage = p.id
 		}
 		imgui.Spacing()
@@ -171,14 +176,14 @@ func renderSidebar() {
 // ------------------------------- 左侧：章节选择页 -------------------------------
 
 func renderChapterPage() {
-	imgui.Text("选择需要运行的章节")
+	imgui.Text("章节选择")
 	imgui.Spacing()
 
-	if imgui.Checkbox("全选", &info.RegChAll) {
+	if imgui.Checkbox("All", &info.RegChAll) { //全选功能
 		applySelectAllToIndividual()
 	}
 	imgui.SameLineV(0, 24)
-	runClicked := imgui.Button("点击运行")
+	runClicked := imgui.Button("Run")
 
 	imgui.Spacing()
 	imgui.Separator()
@@ -221,7 +226,8 @@ func renderChapterGrid() {
 			syncSelectAllFromIndividual()
 		}
 
-		label := fmt.Sprintf("%d", idx+1)
+		label := fmt.Sprintf("%s", mainProcess.ChapterHandlers[idx].RegName)
+		//		label := fmt.Sprintf("%d", idx+1)
 		textSize := imgui.CalcTextSize(label)
 		offsetX := (boxSize - textSize.X) / 2
 		if offsetX < 0 {
@@ -252,7 +258,7 @@ func renderChapterGrid() {
 // ------------------------------- 左侧：运行设置页（占位，按需扩展） -------------------------------
 
 func renderSettingsPage() {
-	imgui.Text("运行设置")
+	imgui.Text("跑商")
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
@@ -266,7 +272,7 @@ func renderSettingsPage() {
 // ------------------------------- 左侧：关于页（占位） -------------------------------
 
 func renderAboutPage() {
-	imgui.Text("关于")
+	imgui.Text("Log")
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()

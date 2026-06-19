@@ -624,28 +624,36 @@ func FindPath(m *AStarMap, start, end Point) []Point {
 	}
 
 	// Douglas-Peucker简化
-	simplified := DouglasPeucker(raw, 0.5)
+	simplified := DouglasPeucker(raw, 3)
 
 	// 推向通道中心
 	centered := PushPathToCenter(m, simplified, 5, 15)
 
-	//for i := 1; i < len(centered); i++ { //打印路径点距
-	//	dx := centered[i].X - centered[i-1].X
-	//	dy := centered[i].Y - centered[i-1].Y
-	//	dist := math.Sqrt(float64(dx*dx + dy*dy))
-	//	fmt.Printf("点%d→点%d 距离=%.1f\n", i-1, i, dist)
-	//}
-
 	// 确保相邻点间距不超过20像素
 	interpolated := interpolatePath(centered, info.MaxDist)
-	// 验证插值结果
-	//for i := 1; i < len(interpolated); i++ {
-	//	dx := interpolated[i].X - interpolated[i-1].X
-	//	dy := interpolated[i].Y - interpolated[i-1].Y
-	//	dist := math.Sqrt(float64(dx*dx + dy*dy))
-	//	if dist > 20 {
-	//		fmt.Printf("插值后仍有超距: 点%d→点%d 距离=%.1f\n", i-1, i, dist)
-	//	}
+
+	// 打印原始路径，看这里是否也有zigzag
+	//fmt.Println("===== 原始A*路径(简化前) =====")
+	//for i, p := range raw {
+	//	fmt.Printf("原始点%d: (%d,%d)\n", i, p.X, p.Y)
+	//}
+	//
+	//simplified := DouglasPeucker(raw, 3.0)
+	//fmt.Println("===== DP简化后 =====")
+	//for i, p := range simplified {
+	//	fmt.Printf("简化点%d: (%d,%d)\n", i, p.X, p.Y)
+	//}
+	//
+	//centered := PushPathToCenter(m, simplified, 5, 15)
+	//fmt.Println("===== PushPathToCenter后 =====")
+	//for i, p := range centered {
+	//	fmt.Printf("居中点%d: (%d,%d)\n", i, p.X, p.Y)
+	//}
+	//
+	//interpolated := interpolatePath(centered, 20.0)
+	//fmt.Println("===== interpolatePath最终结果 =====")
+	//for i, p := range interpolated {
+	//	fmt.Printf("最终点%d: (%d,%d)\n", i, p.X, p.Y)
 	//}
 
 	return interpolated
@@ -712,14 +720,23 @@ func StartMapMonitor(bigMapPath string, cancelFunc context.CancelFunc) {
 
 func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) info.WayFindState {
 	if len(path) == 0 {
-		println("1")
+		//println("1")
 		return info.STATE_CDT_Useless // 假如路径为空当坐标异常处理，触发重新寻路
 	}
 	defer myMotion.StopMove()
 
 	detachmentTime := 0
-
 	for _, waypoint := range path {
+		//for i, waypoint := range path {
+		//// ===== 新增：计算这一段实际长度，限制lookAhead范围 =====
+		//segLen := info.LookAheadDist
+		//if i > 0 {
+		//	prevDx := float64(waypoint.X - path[i-1].X)
+		//	prevDy := float64(waypoint.Y - path[i-1].Y)
+		//	segLen = math.Sqrt(prevDx*prevDx + prevDy*prevDy)
+		//}
+		//effectiveLookAhead := math.Min(info.LookAheadDist, segLen/2)
+		//// ===== 新增结束 =====
 		tryCount := 0
 
 		for tryCount < info.PathfindingRetryCount {
@@ -752,6 +769,17 @@ func FollowPath(ctx context.Context, path []Point, getCurrentPos func() Point) i
 				motion.Click(holdX, holdY, 0, 0)
 				return info.STATE_CDT_Useless
 			}
+
+			//// ===== 新增：look-ahead目标点融合 =====
+			//targetX, targetY := waypoint.X, waypoint.Y
+			//if dist < effectiveLookAhead && i+1 < len(path) {
+			//	next := path[i+1]
+			//	t := 1 - (dist / effectiveLookAhead)
+			//	targetX = waypoint.X + int(float64(next.X-waypoint.X)*t)
+			//	targetY = waypoint.Y + int(float64(next.Y-waypoint.Y)*t)
+			//}
+			//// ===== 新增结束 =====
+			//holdX, holdY := myMotion.CalcHoldPoint(cur.X, cur.Y, targetX, targetY)
 
 			holdX, holdY := myMotion.CalcHoldPoint(cur.X, cur.Y, waypoint.X, waypoint.Y)
 			//fmt.Printf("发送触摸: holdX=%d holdY=%d\n", holdX, holdY)
@@ -811,6 +839,7 @@ func NavigateTo(bigMapPath string, astarMap *AStarMap, end Point,
 
 		//path := AStar(astarMap, start, end)
 		path := FindPath(astarMap, start, end)
+
 		if path == nil || len(path) == 0 {
 			fmt.Printf("路径为空，等待后重试,path长度:%d\n", len(path))
 			time.Sleep(500 * time.Millisecond)
@@ -1067,4 +1096,80 @@ func YoloFind(yoloPtr *yolo.Yolo, bigMapPath string) info.WayFindState {
 
 func Handle() { //测试自动纠错
 	handleLossMap(info_chapter.Ch1.ChapterImg_path)
+}
+
+// TestMoveSpeed 测试角色移动速度，单位 像素/秒
+// holdSeconds：测试持续时间
+func TestMoveSpeed(getCurrentPos func() Point, holdSeconds float64) float64 {
+	fmt.Println("开始测速，3秒后开始移动...")
+	time.Sleep(3 * time.Second) // 留出时间切到游戏画面
+
+	// 用一个固定的远方向，保证朝一个方向跑（往右）
+	//targetX := myMotion.ScreenCenterX + 200
+	//targetY := myMotion.ScreenCenterY
+
+	type sample struct {
+		pos Point
+		t   time.Time
+	}
+	var samples []sample
+
+	startTime := time.Now()
+	//myMotion.StartMoveXY(targetX, targetY)
+
+	// 每16ms采样一次坐标
+	for time.Since(startTime).Seconds() < holdSeconds {
+		cur := getCurrentPos()
+		samples = append(samples, sample{pos: cur, t: time.Now()})
+		time.Sleep(16 * time.Millisecond)
+	}
+
+	//myMotion.StopMove()
+
+	if len(samples) < 2 {
+		fmt.Println("采样点不足，测速失败")
+		return 0
+	}
+
+	// 跳过前10%和后10%的样本，避免起步加速和停止减速的干扰
+	skip := len(samples) / 10
+	if skip < 1 {
+		skip = 1
+	}
+	valid := samples[skip : len(samples)-skip]
+
+	if len(valid) < 2 {
+		valid = samples
+	}
+
+	totalDist := 0.0
+	for i := 1; i < len(valid); i++ {
+		dx := float64(valid[i].pos.X - valid[i-1].pos.X)
+		dy := float64(valid[i].pos.Y - valid[i-1].pos.Y)
+		totalDist += math.Sqrt(dx*dx + dy*dy)
+	}
+
+	elapsed := valid[len(valid)-1].t.Sub(valid[0].t).Seconds()
+	if elapsed <= 0 {
+		fmt.Println("有效时间太短，测速失败")
+		return 0
+	}
+
+	speed := totalDist / elapsed // px/s
+	perFrame := speed * 0.016    // 每16ms移动的像素数
+
+	fmt.Printf("总移动距离=%.1fpx 用时=%.2fs 速度=%.1fpx/s 每帧约%.2fpx\n",
+		totalDist, elapsed, speed, perFrame)
+
+	return speed
+}
+func TestSpeed() {
+	bigMapPath := "/mnt/shared/Pictures/img/map/scaled_grey_Extend_chapter3_1.jpg"
+	speed := TestMoveSpeed(func() Point {
+		x, y := MyOpenCV.MapMatch(bigMapPath,
+			143, 110, 285, 252, true, false, 0.6)
+		return Point{X: x, Y: y}
+	}, 2.0) // 测试2秒
+
+	fmt.Printf("建议SuccessDist设为: %.0f\n", speed*0.016*1.5) // 每帧移动量的1.5倍留余量
 }

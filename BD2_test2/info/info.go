@@ -44,9 +44,10 @@ var (
 
 	//━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 	//================astar para==============
-	MaxDist     = 14.0 //路径简化后,路径之间的最大像素距离
-	SuccessDist = 7.0  //目标在这个范围内看作寻路完成
-	ErrDist     = 25.0 //离下一个目标超过这个距离算作寻路超距, 注意: MaxDist + SuccessDist < ErrDist
+	MaxDist = 14.0 //路径简化后,路径之间的最大像素距离
+	//LookAheadDist = 14.0
+	SuccessDist = 5.0  //目标在这个范围内看作寻路完成
+	ErrDist     = 20.0 //离下一个目标超过这个距离算作寻路超距, 注意: MaxDist + SuccessDist < ErrDist
 
 	PathfindingRetryCount = 15                    //寻路重试次数,超过这个次数 超时计数+1
 	TimeoutCount          = 2                     //超时计数大于这个数返回超时

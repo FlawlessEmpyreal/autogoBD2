@@ -238,6 +238,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 			}
 			time.Sleep(1 * time.Second)
 		}
+		time.Sleep(1000 * time.Millisecond)
 		return info.StageDone, nil
 	}
 
@@ -255,7 +256,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 		motion.Swipe(937, 636, 549, 636, 1000, 0, 0)
 		time.Sleep(2000 * time.Millisecond)
 		if i == 5 {
-			return info.StageDone, fmt.Errorf("寻找章节失败未找到章节,重新执行本阶段")
+			return info.GoToRunMapInterface, fmt.Errorf("寻找章节失败未找到章节,重新执行本阶段")
 		}
 	}
 
@@ -303,6 +304,7 @@ func FindChapter(chapterImg_path, type_ string) (info.RecoveryAction, error) { /
 	//	println("已进入章节")
 	//	break
 	//}
+	time.Sleep(1000 * time.Millisecond)
 	return info.StageDone, nil
 }
 
